@@ -5,6 +5,7 @@
 ### Library ----
 library(tidyverse)
 library(retistruct)
+library(plotrix)
 library(lme4)
 library(lmerTest)
 library(lmtest)
@@ -314,19 +315,34 @@ opt_stats <- opt_stats %>%
                                     grepl("T", sample_max) ~ "treatment"))
 
 ## Testing significance of optimum temperature ranges 
-t.test(opt_temp_max ~ treatment_type, data = opt_stats)
-t.test(opt_temp_min ~ treatment_type, data = opt_stats)
+t.test(opt_temp_max ~ treatment_type, data = opt_stats)   # control = 8.9, treatment = 12.1
+                                                          # p = 0.31, t = -1.07, DF = 10
+
+t.test(opt_temp_min ~ treatment_type, data = opt_stats)   # control = 7.7, treatment = 9.7
+                                                          # p = 0.40, t = -0.87, DF = 10
+
+## Determining SE of the averages
+opt_sum <- opt_stats %>% 
+               group_by(treatment_type) %>%
+               mutate(se_max = std.error(opt_temp_max),
+                      se_min = std.error(opt_temp_min)) %>% 
+               summarise(avg_max = mean(opt_temp_max),
+                         avg_min = mean(opt_temp_min),
+                         se_max = mean(se_max),
+                         se_min = mean(se_min),
+                         sd_max = sd(opt_temp_max),
+                         sd_min = sd(opt_temp_min))
 
 
 ### Negative NP Statistics ----
 ## Determining the control intersection points
 # visualizing the intersection points
 (negnp_control_plot <- ggplot(np_full_control, aes(x = temp, y = np_DW)) +
-   geom_point(aes(color = sample), 
-              size = 2, alpha = 0.85) +
-   geom_line(aes(color = sample)) +
-   facet_wrap(~sample) +
-   geom_hline(yintercept = 0))
+                           geom_point(aes(color = sample), 
+                                      size = 2, alpha = 0.85) +
+                           geom_line(aes(color = sample)) +
+                           facet_wrap(~sample) +
+                           geom_hline(yintercept = 0))
 
 # C1 intersection points
 c1aneg <- c(25, 0.03516769)
@@ -384,11 +400,11 @@ line.line.intersection(c6aneg, c6bneg, control_y_c6neg, control_y2_c6neg,
 ## Determining the treatment intersection points
 # visualizing the intersection points
 (negnp_treatment_plot <- ggplot(np_full_treatment, aes(x = temp, y = np_DW)) +
-    geom_point(aes(color = sample), 
-               size = 2, alpha = 0.85) +
-    geom_line(aes(color = sample)) +
-    facet_wrap(~sample) +
-    geom_hline(yintercept = 0))
+                            geom_point(aes(color = sample), 
+                                       size = 2, alpha = 0.85) +
+                            geom_line(aes(color = sample)) +
+                            facet_wrap(~sample) +
+                            geom_hline(yintercept = 0))
 
 # T1 intersection points
 t1aneg <- c(15, 1.81651836)
@@ -432,6 +448,15 @@ negNP_stats <- negNP_stats %>%
 ## Testing significance of optimum temperature ranges 
 t.test(negNP ~ treatment_type, data = negNP_stats)
 
+## Determining SE of the average
+negNP_sum <- negNP_stats %>% 
+               group_by(treatment_type) %>%
+               mutate(se = std.error(negNP)) %>% 
+               summarise(avg = mean(negNP),
+                         se = mean(se),
+                         sd = sd(negNP))
+
+
 ### Maximum NP Statistics ----
 # maximum net photosynthesis for each control sample 
 summary(np_full_control$np_DW[np_full_control$sample == "C1"])  # max C1 = 2.150
@@ -462,13 +487,22 @@ maxNP_stats <- maxNP_stats %>%
 ## Testing significance of maximum NP rates 
 t.test(maxNP ~ treatment_type, data = maxNP_stats)
 
+## Determining SE of the average
+maxNP_sum <- maxNP_stats %>% 
+               group_by(treatment_type) %>%
+               mutate(se = std.error(maxNP)) %>% 
+               summarise(avg = mean(maxNP),
+                         se = mean(se),
+                         sd = sd(maxNP))
+
+
 ### Models for NP ----
 ## Checking data assumptions  
 # normally distributed response variable 
 (hist <- ggplot(np_full, aes(x = np_DW)) +
-   geom_histogram(color = "black") +
-   theme_classic() +
-   scale_y_continuous(expand = c(0,0)))
+            geom_histogram(color = "black") +
+            theme_classic() +
+            scale_y_continuous(expand = c(0,0)))
 shapiro.test(np_full$np_DW)   # is normally distributed, p > 0.05
 
 # homogeneity of regression slopes 
@@ -603,7 +637,7 @@ line.line.intersection(t1_l, t2_l, treatment_y_l, treatment_y2_l,
 ## Determining the intersection points for LCP
 # visualizing the light compensation point  
 (lightcomp_plot <- light_plot + 
-    geom_hline(yintercept = 0))
+                     geom_hline(yintercept = 0))
 
 # control intersection point
 c1_lc <- c(50, -2.2333333)
@@ -692,15 +726,24 @@ treatment_y2_t3 <- c(500, 34.920)
 line.line.intersection(t3_1, t3_2, treatment_y_t3, treatment_y2_t3, 
                        interior.only = FALSE)               # x = 497.6 µE m^-2 s^-1
 
-light_sum$LSPcuv <- c(852.0, 739.8, 887.9, 390.0, 382.7, 497.6)
-light_sum$treatment_type <- c("control", "control", "control", 
+light_lsp <- light_sum
+light_lsp$LSPcuv <- c(852.0, 739.8, 887.9, 390.0, 382.7, 497.6)
+light_lsp$treatment_type <- c("control", "control", "control", 
                               "treatment", "treatment", "treatment")              
 
 ## T-Test for LSP
-t.test(LSPcuv ~ treatment_type, data = light_sum)  # p = 0.0025 (significant difference!)
-# t = 6.9453, df = 3.8731 
+t.test(LSPcuv ~ treatment_type, data = light_lsp)  # p = 0.0025 (significant difference!)
+                                                   # t = 6.9453, df = 3.8731 
 # using the means of the calculated LSPcuv, control = 826.6 and treatment = 423.4
 # (different to pre-averaged data)
+
+## Determining SE of the average
+light_sum_lsp <- light_lsp %>% 
+                     group_by(treatment_type) %>%
+                     mutate(se = std.error(LSPcuv)) %>% 
+                     summarise(avg = mean(LSPcuv),
+                               se = mean(se),
+                               sd = sd(LSPcuv))
 
 
 ### Light Response Curve LCP Statistics ----
@@ -766,13 +809,23 @@ treatment_y2_t3b <- c(60, 0)
 line.line.intersection(t3_1b, t3_2b, treatment_y_t3b, treatment_y2_t3b, 
                        interior.only = FALSE)               # x = 27.9 µE m^-2 s^-1
 
-light_sum$LCPcuv <- c(96.3, 147.3, 71.2, 25.7, 22.4, 27.9)
+light_lcp <- light_sum
+light_lcp$LCPcuv <- c(96.3, 147.3, 71.2, 25.7, 22.4, 27.9)
 
 ## T-Test for LCP
-t.test(LCPcuv ~ treatment_type, data = light_sum)  # p = 0.07 (NOT significantly different)
-# t = 3.5464, df = 2.0204 
+t.test(LCPcuv ~ treatment_type, data = light_lcp)  # p = 0.07 (NOT significantly different)
+                                                       # t = 3.5464, DF = 2.0204 
 # using the means of the calculated LCPcuv, control = 104.93 and treatment = 25.33 
 # (slightly different to pre-averaged data)
+
+## Determining SE of the average
+light_sum_lcp <- light_lcp %>% 
+                  group_by(treatment_type) %>%
+                  mutate(se = std.error(LCPcuv)) %>% 
+                  summarise(avg = mean(LCPcuv),
+                            se = mean(se),
+                            sd = sd(LCPcuv))
+
 
 ### Optimal Water Content Ranges ----
 water <- read.csv("Data/water_content_full.csv")
