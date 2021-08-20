@@ -7,6 +7,7 @@ library(tidyverse)
 library(lme4)
 library(ggeffects)
 library(ggpubr)
+library(plotrix)
 
 ### Temperature Response Curves ----
 avgdata <- read.csv("Data/np_dr_averages.csv", header = TRUE)
@@ -65,6 +66,32 @@ ggsave("Figures/t_response_DW.png", plot = dw_plot,
                 scale_y_continuous(breaks = seq(-20, 10, 5)))
 
 ggsave("Figures/t_response_chl.png", plot = chl_plot, 
+       width = 6.8, height = 5.2, units = "in")
+
+# plotting curves using surface area  
+(sa_plot <- ggplot(avgdata, aes(x = temp, y = avgSA, color = treatment_type)) +
+                geom_hline(yintercept = 0, color = "grey", size = 0.8) +  # optional to keep              
+                geom_point(aes(shape = type), size = 2) +
+                geom_line(aes(linetype = type)) +
+                geom_errorbar(aes(ymin = avgSA-se_SA, ymax = avgSA+se_SA), width = 0.5) +
+                ylab(label = 
+                       expression(Assimilation~per~area~(µmol~m^-2~s^-1))) +
+                xlab(label = "Temperature (˚C)") +              
+                theme_bw() +
+                theme(axis.title.x = 
+                        element_text(margin = margin(t = 10, r = 0, b = 0, l = 0)),
+                      axis.title.y = 
+                        element_text(margin = margin(t = 0, r = 7, b = 0, l = 0)), 
+                      panel.grid.minor = element_blank()) +
+                theme(plot.margin = unit(c(1, 1, 1, 1), "cm")) + 
+                scale_color_manual(values = c("#12A7B8", "#004452"),
+                                   name = c("Treatment Type", "Process"),
+                                   labels = c("Control", "Treatment")) +
+                scale_linetype_discrete(name = c("Process", "Treatment Type")) +
+                scale_shape_discrete(name = c("Process", "Treatment Type")) +
+                scale_y_continuous(breaks = seq(-20, 10, 5)))
+
+ggsave("Figures/t_response_sa.png", plot = sa_plot, 
        width = 6.8, height = 5.2, units = "in")
 
 
