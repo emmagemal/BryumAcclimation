@@ -547,8 +547,8 @@ summary(mixed_sample_np)  # sample explains quite a bit of the residual variance
 # they're significantly different from 0 according to the CI's
 1.781/(1.781+3.220)    # sample explains 35.6% of the residual variation 
 
-anova(mixed_sample_np)   # temp: F = 45.23, p = 7.465e-9
-# treatment_type: F = 9.59, p = 0.0095
+anova(mixed_sample_np)   # temp: F = 45.23, p = 7.465e-9, DF = 59.78
+# treatment_type: F = 9.59, p = 0.0095, DF = 11.739
 
 ### Models for DR ----
 ## Checking data assumptions  
@@ -591,8 +591,8 @@ summary(mixed_sample_dr)  # sample explains a lot of the residual variance
 # temp is significant, treatment_type is not 
 1.720/(1.720+1.546)  # sample explains 52.7% of the residual variation
 
-anova(mixed_sample_dr)   # temp: F = 369.69, p = <2e-16
-# treatment_type: F = 1.811, p = 0.204
+anova(mixed_sample_dr)   # temp: F = 369.69, p = <2e-16, DF = 59.69
+# treatment_type: F = 1.811, p = 0.204, DF = 11.68
 # treatment_type is not significant, temp is significant 
 
 ### Average Light Response Curve Calculations ----
