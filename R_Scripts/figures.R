@@ -8,6 +8,7 @@ library(lme4)
 library(ggeffects)
 library(ggpubr)
 library(plotrix)
+library(gridExtra)
 
 ### Temperature Response Curves ----
 avgdata <- read.csv("Data/np_dr_averages.csv", header = TRUE)
@@ -96,55 +97,106 @@ ggsave("Figures/t_response_sa.png", plot = sa_plot,
 
 
 ### Carbon Gain Efficiency ----
-cgain <- read.csv("Data/c_gain_long.csv") 
-
+cgain <- read.csv("Data/c_gainSA.csv") 
 str(cgain)
 
 # making stacked plots of DR:NP 
-(stacked_both <- ggplot(cgain, aes(x = temp, y = percent, fill = type)) +
-                    geom_bar(position = "fill", stat = "identity") +
-                    ylab(label = "Carbon Use Efficiency (%)") +
-                    xlab(label = "Temperature (˚C)") +              
-                    facet_wrap(~treatment_type, nrow = 1) +
-                    theme_bw() +
-                    theme(axis.title.x = 
-                            element_text(margin = margin(t = 10, r = 0, b = 0, l = 0)),
-                          axis.title.y = 
-                            element_text(margin = margin(t = 0, r = 5, b = 0, l = 0))) +
-                    theme(plot.margin = unit(c(1, 1, 1, 1), "cm"),
-                          panel.spacing = unit(1, "cm")) + 
-                    scale_fill_manual(values = c("#FF6D33", "#7A292A"),
-                                      name = "Process") +  # could change the name 
-                    scale_y_continuous(expand = expansion(mult = c(0, 0.01)),
-                                       labels = scales::percent_format(suffix = "")))  # OR
-                #    scale_y_continuous(expand = c(0,0)))
+(stacked_SA <- ggplot(cgain, aes(x = temp, y = percent, fill = type)) +
+                  geom_bar(position = "fill", stat = "identity") +
+                  ylab(label = "Carbon Use Efficiency (%)") +
+                  xlab(label = "Temperature (˚C)") +              
+                  facet_wrap(~treatment_type, nrow = 1) +
+                  theme_bw() +
+                  theme(axis.title.x = 
+                          element_text(margin = margin(t = 10, r = 0, b = 0, l = 0)),
+                        axis.title.y = 
+                          element_text(margin = margin(t = 0, r = 5, b = 0, l = 0))) +
+                  theme(plot.margin = unit(c(1, 1, 1, 1), "cm"),
+                        panel.spacing = unit(1, "cm")) + 
+                  scale_fill_manual(values = c("#FF6D33", "#7A292A"),
+                                    name = "Process") +  # could change the name 
+                  scale_y_continuous(expand = expansion(mult = c(0, 0.01)),
+                                     labels = scales::percent_format(suffix = "")))  # OR
+              #    scale_y_continuous(expand = c(0,0)))
 
-ggsave("Figures/c_gain_stacked.png", plot = stacked_both, 
+ggsave("Figures/c_gain_SA.png", plot = stacked_SA, 
        width = 7.5, height = 5, units = "in")
+
+# using dry weight instead 
+cgain_dw <- read.csv("Data/c_gain_long.csv") 
+str(cgain_dw)
+
+# making stacked plots of DR:NP 
+(stacked_DW <- ggplot(cgain_dw, aes(x = temp, y = percent, fill = type)) +
+                  geom_bar(position = "fill", stat = "identity") +
+                  ylab(label = "Carbon Use Efficiency (%)") +
+                  xlab(label = "Temperature (˚C)") +              
+                  facet_wrap(~treatment_type, nrow = 1) +
+                  theme_bw() +
+                  theme(axis.title.x = 
+                          element_text(margin = margin(t = 10, r = 0, b = 0, l = 0)),
+                        axis.title.y = 
+                          element_text(margin = margin(t = 0, r = 5, b = 0, l = 0))) +
+                  theme(plot.margin = unit(c(1, 1, 1, 1), "cm"),
+                        panel.spacing = unit(1, "cm")) + 
+                  scale_fill_manual(values = c("#FF6D33", "#7A292A"),
+                                    name = "Process") +  # could change the name 
+                  scale_y_continuous(expand = expansion(mult = c(0, 0.01)),
+                                     labels = scales::percent_format(suffix = "")))  # OR
+              #    scale_y_continuous(expand = c(0,0)))
+
+ggsave("Figures/c_gain_DW.png", plot = stacked_DW, 
+       width = 7.5, height = 5, units = "in")
+
+
+grid.arrange(stacked_DW, stacked_SA, nrow = 2)
 
 
 ### Acclimation Ratios ----
 ratios <- read.csv("Data/acclimation_ratios.csv")
 
-(ratio_plot <- ggplot(ratios, aes(x = temp, y = DWt.c)) +
-                  geom_point(aes(color = type, shape = type), size = 2.5, alpha = 0.9) +
-                  geom_hline(yintercept = 1, linetype = "dotted") +
-                  ylab(label = "Acclimation ratio") +
-                  xlab(label = "Temperature (˚C)") +
-                  theme_bw() +
-                  theme(axis.title.x = 
-                          element_text(margin = margin(t = 10, r = 0, b = 0, l = 0)),
-                        axis.title.y = 
-                          element_text(margin = margin(t = 0, r = 10, b = 0, l = 0)),
-                        panel.grid.minor = element_blank()) +
-                  theme(plot.margin = unit(c(1, 1, 1, 1), "cm")) +
-                  scale_color_manual(values = c("#FF6D33", "#7A292A"),
-                                     name = "Process") +
-                  scale_shape_discrete(name = "Process") + # can change the name
-                  scale_y_continuous(limits = c(0, 6)))
+(DWratio_plot <- ggplot(ratios, aes(x = temp, y = DWt.c)) +
+                    geom_point(aes(color = type, shape = type), size = 2.5, alpha = 0.9) +
+                    geom_hline(yintercept = 1, linetype = "dotted") +
+                    ylab(label = "DW Acclimation ratio") +
+                    xlab(label = "Temperature (˚C)") +
+                    theme_bw() +
+                    theme(axis.title.x = 
+                            element_text(margin = margin(t = 10, r = 0, b = 0, l = 0)),
+                          axis.title.y = 
+                            element_text(margin = margin(t = 0, r = 10, b = 0, l = 0)),
+                          panel.grid.minor = element_blank()) +
+                    theme(plot.margin = unit(c(1, 1, 1, 1), "cm")) +
+                    scale_color_manual(values = c("#FF6D33", "#7A292A"),
+                                       name = "Process") +
+                    scale_shape_discrete(name = "Process") + # can change the name
+                    scale_y_continuous(limits = c(0, 6)))
 
-ggsave("Figures/acclim_ratio_plot.png", plot = ratio_plot, 
+ggsave("Figures/DWacclim_ratio_plot.png", plot = DWratio_plot, 
        width = 6.5, height = 5, units = "in")
+
+
+(SAratio_plot <- ggplot(ratios, aes(x = temp, y = SAt.c)) +
+                    geom_point(aes(color = type, shape = type), size = 2.5, alpha = 0.9) +
+                    geom_hline(yintercept = 1, linetype = "dotted") +
+                    ylab(label = "SA Acclimation ratio") +
+                    xlab(label = "Temperature (˚C)") +
+                    theme_bw() +
+                    theme(axis.title.x = 
+                            element_text(margin = margin(t = 10, r = 0, b = 0, l = 0)),
+                          axis.title.y = 
+                            element_text(margin = margin(t = 0, r = 10, b = 0, l = 0)),
+                          panel.grid.minor = element_blank()) +
+                    theme(plot.margin = unit(c(1, 1, 1, 1), "cm")) +
+                    scale_color_manual(values = c("#FF6D33", "#7A292A"),
+                                       name = "Process") +
+                    scale_shape_discrete(name = "Process") + # can change the name
+                    scale_y_continuous(limits = c(0, 6)))
+
+ggsave("Figures/SAacclim_ratio_plot.png", plot = SAratio_plot, 
+       width = 6.5, height = 5, units = "in")
+
+grid.arrange(SAratio_plot, DWratio_plot, ncol = 2)
 
 
 ### Light Response Curves ----
