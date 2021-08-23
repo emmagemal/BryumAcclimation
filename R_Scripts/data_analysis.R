@@ -809,11 +809,11 @@ treatment_y2_t3b <- c(60, 0)
 line.line.intersection(t3_1b, t3_2b, treatment_y_t3b, treatment_y2_t3b, 
                        interior.only = FALSE)               # x = 27.9 µE m^-2 s^-1
 
-light_lcp <- light_sum
+light_lcp <- light_lsp
 light_lcp$LCPcuv <- c(96.3, 147.3, 71.2, 25.7, 22.4, 27.9)
 
 ## T-Test for LCP
-t.test(LCPcuv ~ treatment_type, data = light_lcp)  # p = 0.07 (NOT significantly different)
+t.test(LCPcuv ~ treatment_type, data = light_lcp)  # p = 0.070 (NOT significantly different)
                                                        # t = 3.5464, DF = 2.0204 
 # using the means of the calculated LCPcuv, control = 104.93 and treatment = 25.33 
 # (slightly different to pre-averaged data)
@@ -885,6 +885,16 @@ line.line.intersection(t_a, t_b, treatment_y, treatment_y2,
                        interior.only = FALSE)                 # x = 13.204 g
 line.line.intersection(t_b, t_c, treatment_y, treatment_y2, 
                        interior.only = FALSE)                 # x = 13.093 g
+
+
+### Chlorophyll Content ----
+chlr <- read.csv("Data/chlorophyll.csv")
+
+str(chlr)
+
+t.test(chl_SA ~ type, data = chlr)  # p = 0.047 (is significantly different)
+                                    # t = -2.2996, DF = 8.7
+# control = 736475.4, treatment = 1250650.3
 
 
 ### Models for Climate (Temperature) ----
