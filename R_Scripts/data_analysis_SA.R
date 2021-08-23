@@ -892,6 +892,15 @@ line.line.intersection(t_b, t_c, treatment_y, treatment_y2,
                        interior.only = FALSE)                 # x = 13.093 g
 
 
+### Chlorophyll Content ----
+chlr <- read.csv("Data/chlorophyll.csv")
+
+str(chlr)
+
+t.test(chl_SA ~ type, data = chlr)  # p = 0.047 (is significantly different)
+# t = -2.2996, DF = 8.7
+# control = 736475.4, treatment = 1250650.3
+
 ### Models for Climate (Temperature) ----
 climate <- read.csv("Data/climate_combo.csv")
 
