@@ -901,6 +901,31 @@ t.test(chl_SA ~ type, data = chlr)  # p = 0.047 (is significantly different)
 # t = -2.2996, DF = 8.7
 # control = 736475.4, treatment = 1250650.3
 
+### Seasonal Change Models ----
+season <- read.csv("Data/season_full.csv")
+
+str(season)
+season <- season %>% 
+            mutate(date = as.Date(date, format = "%d/%m/%Y"))
+str(season)
+
+season_dr <- lm(DR ~ date, data = season)
+season_np <- lm(NP ~ date, data = season)
+season_gp <- lm(GP ~ date, data = season)
+
+summary(season_dr)   # slope = 0.122 ± 0.021
+                     # p = 1.05e-5, t = 5.68 (significant)
+anova(season_dr)
+
+summary(season_np)   # slope = -0.013 ± 0.0065
+                     # p = 0.061, t = -1.97 (NOT significant)
+anova(season_np)
+
+summary(season_gp)   # slope = 0.109 ± 0.0025
+                     # p = 2.19e-4, t = 4.42 (significant)
+anova(season_gp)
+
+
 ### Models for Climate (Temperature) ----
 climate <- read.csv("Data/climate_combo.csv")
 
