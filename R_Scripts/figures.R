@@ -243,6 +243,7 @@ ggsave("Figures/light_response.png", plot = light_plots,
 
 
 ### Seasonal Changes ----
+## NP, DR and GP
 season_long <- read.csv("Data/season_long.csv")
 
 str(season_long)
@@ -256,7 +257,7 @@ str(season_long)
                   geom_errorbar(aes(ymin = rate-se, ymax = rate+se, color = type), 
                                 width = 1) +
                   ylab(label = expression(paste(
-                    "CO"[2], " Exchange (µmol ", "m"^-2, " s"^-1, ")"))) +  
+                    "CO"[2], " exchange (µmol ", "m"^-2, " s"^-1, ")"))) +  
                   xlab(label = "Date") +
                   theme_bw() +
                   theme(axis.title.x = 
@@ -270,6 +271,48 @@ str(season_long)
 
 ggsave("Figures/season_rates.png", plot = season_plot, 
        width = 6.8, height = 5.2, units = "in")
+
+## Chlorophyll content
+chl_season <- read.csv("Data/chl_season.csv")
+
+str(chl_season)
+chl_season <- chl_season %>% 
+                mutate(date = as.Date(date, format = "%d/%m/%Y")) %>% 
+                dplyr::select(date, chl_mg, chl_mmol) 
+                
+str(chl_season)
+
+chl_sum <- chl_season %>% 
+              group_by(date) %>% 
+              mutate(chl_mg_se = std.error(chl_mg),
+                     chl_mmol_se = std.error(chl_mmol)) %>% 
+              summarise(chl_mg = mean(chl_mg),
+                        chl_mmol = mean(chl_mmol),
+                        chl_mg_se = mean(chl_mg_se),
+                        chl_mmol_se = mean(chl_mmol_se)) %>% 
+              mutate(chl_µg = chl_mg*1000) %>% 
+              na.omit()
+
+(chl_season_plot <- ggplot(chl_sum, aes(x = date, y = chl_mg)) +
+                      geom_point(fill = "#5D5F25", color = "#5D5F25", size = 2.2) +
+                      geom_line(color = "#5D5F25") +
+                      geom_errorbar(aes(ymin = chl_mg-chl_mg_se, ymax = chl_mg+chl_mg_se), 
+                                    width = 1, color = "#5D5F25") +
+                      ylab(label = expression(Chlorophyll~content~(mg~m^-2))) +  
+                      xlab(label = "Date") +
+                      theme_bw() +
+                      theme(axis.title.x = 
+                              element_text(margin = margin(t = 10, r = 0, b = 0, l = 0)),
+                            axis.title.y = 
+                              element_text(margin = margin(t = 0, r = 7, b = 0, l = 0)), 
+                            panel.grid.minor = element_blank()) +
+                      theme(plot.margin = unit(c(1, 1, 1, 1), "cm")))
+
+ggsave("Figures/season_chl.png", plot = chl_season_plot, 
+       width = 6.2, height = 5.2, units = "in")
+
+panel <- grid.arrange(season_plot, chl_season_plot, ncol = 2, padding = 0, widths = c(1.3, 1))
+ggsave("Figures/season_panel.png", plot = panel, width = 12, height = 5.5, units = "in")
 
 
 ### Climate Data ----
