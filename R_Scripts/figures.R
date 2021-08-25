@@ -242,33 +242,63 @@ ggsave("Figures/light_response.png", plot = light_plots,
        width = 7, height = 5.5, units = "in")
 
 
+### Seasonal Changes ----
+season_long <- read.csv("Data/season_long.csv")
+
+str(season_long)
+season_long <- season_long %>% 
+                  mutate(date = as.Date(date, format = "%d/%m/%Y"))
+str(season_long)
+
+(season_plot <- ggplot(season_long, aes(x = date, y = rate, group = type)) +
+                  geom_point(aes(color = type), size = 2.2) +
+                  geom_line(aes(color = type)) +
+                  geom_errorbar(aes(ymin = rate-se, ymax = rate+se, color = type), 
+                                width = 1) +
+                  ylab(label = expression(paste(
+                    "CO"[2], " Exchange (µmol ", "m"^-2, " s"^-1, ")"))) +  
+                  xlab(label = "Date") +
+                  theme_bw() +
+                  theme(axis.title.x = 
+                          element_text(margin = margin(t = 10, r = 0, b = 0, l = 0)),
+                        axis.title.y = 
+                          element_text(margin = margin(t = 0, r = 7, b = 0, l = 0)), 
+                        panel.grid.minor = element_blank()) +
+                  theme(plot.margin = unit(c(1, 1, 1, 1), "cm")) + 
+                  scale_color_manual(values = c("#7A292A", "#B5BA4F", "#FF6D33"),
+                                     name = "Type"))
+
+ggsave("Figures/season_rates.png", plot = season_plot, 
+       width = 6.8, height = 5.2, units = "in")
+
+
 ### Climate Data ----
 climate <- read.csv("Data/climate_combo.csv")
 
 # creating summary data 
 # for year
 sum_year <- climate %>% 
-  group_by(year) %>% 
-  summarise(avg_temp = mean(temp),
-            min_temp = min(temp),
-            max_temp = max(temp))
+              group_by(year) %>% 
+              summarise(avg_temp = mean(temp),
+                        min_temp = min(temp),
+                        max_temp = max(temp))
 
 sum_year_long <- sum_year %>% 
-  pivot_longer(cols = c(2:4),
-               names_to = "type",
-               values_to = "temp")
+                    pivot_longer(cols = c(2:4),
+                                 names_to = "type",
+                                 values_to = "temp")
 
 # for season
 sum_season <- climate %>% 
-  group_by(season) %>% 
-  summarise(avg_temp = mean(temp),
-            min_temp = min(temp),
-            max_temp = max(temp))
+                group_by(season) %>% 
+                summarise(avg_temp = mean(temp),
+                          min_temp = min(temp),
+                          max_temp = max(temp))
 
 sum_season_long <- sum_season %>% 
-  pivot_longer(cols = c(2:4),
-               names_to = "type",
-               values_to = "temp")
+                      pivot_longer(cols = c(2:4),
+                                   names_to = "type",
+                                   values_to = "temp")
 
 
 # plotting the average, minimum and maximum temperature over time (by year) 
