@@ -902,6 +902,7 @@ t.test(chl_SA ~ type, data = chlr)  # p = 0.047 (is significantly different)
 # control = 736475.4, treatment = 1250650.3
 
 ### Seasonal Change Models ----
+## NP, DR and GP across the season
 season <- read.csv("Data/season_full.csv")
 
 str(season)
@@ -912,6 +913,15 @@ str(season)
 season_dr <- lm(DR ~ date, data = season)
 season_np <- lm(NP ~ date, data = season)
 season_gp <- lm(GP ~ date, data = season)
+
+plot(season_dr)   
+hist(resid(season_dr))  # not super normally distributed residuals, but it's fine 
+
+plot(season_np)   
+hist(resid(season_np))
+
+plot(season_gp)   
+hist(resid(season_gp))
 
 summary(season_dr)   # slope = 0.122 ± 0.021
                      # p = 1.05e-5, t = 5.68 (significant)
@@ -924,6 +934,23 @@ anova(season_np)
 summary(season_gp)   # slope = 0.109 ± 0.0025
                      # p = 2.19e-4, t = 4.42 (significant)
 anova(season_gp)
+
+## Chlorophyll across the season
+chl_season <- read.csv("Data/chl_season.csv")
+
+str(chl_season)
+chl_season <- chl_season %>% 
+                mutate(date = as.Date(date, format = "%d/%m/%Y")) %>% 
+                dplyr::select(date, chl_mg, chl_mmol)
+str(chl_season)
+
+chl_lm <- lm(chl_mg ~ date, data = chl_season)
+
+plot(chl_lm)   
+hist(resid(chl_lm))
+
+summary(chl_lm)
+anova(chl_lm)
 
 
 ### Models for Climate (Temperature) ----
