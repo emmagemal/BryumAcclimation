@@ -9,6 +9,7 @@ library(ggeffects)
 library(ggpubr)
 library(plotrix)
 library(gridExtra)
+library(patchwork)
 
 ### Temperature Response Curves ----
 avgdata <- read.csv("Data/np_dr_averages.csv", header = TRUE)
@@ -311,8 +312,46 @@ chl_sum <- chl_season %>%
 ggsave("Figures/season_chl.png", plot = chl_season_plot, 
        width = 6.2, height = 5.2, units = "in")
 
+# creating a panel of the 2 plots 
 panel <- grid.arrange(season_plot, chl_season_plot, ncol = 2, padding = 0, widths = c(1.3, 1))
 ggsave("Figures/season_panel.png", plot = panel, width = 12, height = 5.5, units = "in")
+
+
+# 2 y-axis plot instead of panel 
+combo <- read.csv("Data/season_chl_combo.csv")
+
+str(combo)
+combo <- combo %>% 
+            mutate(date = as.Date(date, format = "%d/%m/%Y"))
+str(combo)
+
+coeff <- 100
+(mixed_plot <- ggplot(combo, aes(x = date)) +
+                  geom_point(aes(y = rate, color = type)) +
+                  geom_line(aes(y = rate, color = type)) +
+                  geom_point(aes(y = chl_mg / coeff), color = "#5D5F25") +
+                  geom_line(aes(y = chl_mg / coeff), color = "#5D5F25") +
+                  xlab(label = "Date") +
+                  theme_bw() +
+                  scale_y_continuous(name = expression(paste(
+                                            "CO"[2], " exchange (µmol ", "m"^-2, " s"^-1, ")")),
+                                     sec.axis = sec_axis(~.*coeff, 
+                                                         name = 
+                                                         expression(paste(
+                                                "Chlorophyll content (mg ", "m"^-2, ")")))) +
+                  theme(axis.title.x = 
+                          element_text(margin = margin(t = 10, r = 0, b = 0, l = 0)),
+                        axis.title.y = 
+                          element_text(margin = margin(t = 0, r = 7, b = 0, l = 0)),
+                        axis.title.y.right = element_text(vjust = 3), 
+                        panel.grid.minor = element_blank()) +
+                  theme(plot.margin = unit(c(1, 1, 1, 1), "cm")) + 
+                  scale_color_manual(values = c("#5D5F25", "#7A292A", "#B5BA4F", "#FF6D33"),
+                                     name = "Type",
+                                     labels = c("Chlorophyll", "DR", "GP", "NP")))
+
+ggsave("Figures/combo_season.png", plot = mixed_plot, 
+       width = 6.8, height = 5.2, units = "in")
 
 
 ### Climate Data ----
