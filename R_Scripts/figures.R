@@ -255,6 +255,7 @@ str(season_long)
 (season_plot <- ggplot(season_long, aes(x = date, y = rate, group = type)) +
                   geom_point(aes(color = type), size = 2.2) +
                   geom_line(aes(color = type)) +
+                  geom_hline(aes(yintercept = 0), linetype = "dotted") +
                   geom_errorbar(aes(ymin = rate-se, ymax = rate+se, color = type), 
                                 width = 1) +
                   ylab(label = expression(paste(
@@ -267,7 +268,7 @@ str(season_long)
                           element_text(margin = margin(t = 0, r = 7, b = 0, l = 0)), 
                         panel.grid.minor = element_blank()) +
                   theme(plot.margin = unit(c(1, 1, 1, 1), "cm")) + 
-                  scale_color_manual(values = c("#7A292A", "#B5BA4F", "#FF6D33"),
+                  scale_color_manual(values = c("#FF6D33", "#B5BA4F", "#7A292A"),
                                      name = "Type"))
 
 ggsave("Figures/season_rates.png", plot = season_plot, 
@@ -322,7 +323,8 @@ combo <- read.csv("Data/season_chl_combo.csv")
 
 str(combo)
 combo <- combo %>% 
-            mutate(date = as.Date(date, format = "%d/%m/%Y"))
+            mutate(date = as.Date(date, format = "%d/%m/%Y")) %>% 
+            na.omit()
 str(combo)
 
 coeff <- 100
@@ -357,149 +359,31 @@ ggsave("Figures/combo_season.png", plot = mixed_plot,
 ### Climate Data ----
 climate <- read.csv("Data/climate_combo.csv")
 
-# creating summary data 
-# for year
-sum_year <- climate %>% 
-              group_by(year) %>% 
-              summarise(avg_temp = mean(temp),
-                        min_temp = min(temp),
-                        max_temp = max(temp))
-
-sum_year_long <- sum_year %>% 
-                    pivot_longer(cols = c(2:4),
-                                 names_to = "type",
-                                 values_to = "temp")
-
-# for season
-sum_season <- climate %>% 
-                group_by(season) %>% 
-                summarise(avg_temp = mean(temp),
-                          min_temp = min(temp),
-                          max_temp = max(temp))
-
-sum_season_long <- sum_season %>% 
-                      pivot_longer(cols = c(2:4),
-                                   names_to = "type",
-                                   values_to = "temp")
-
-
-# plotting the average, minimum and maximum temperature over time (by year) 
-minor <- seq(2004, 2016, by = 4)   # making minor gridlines for the plot 
-
-(temp_year <- ggplot(sum_year_long, aes(x = year, y = temp, 
-                                        color = type, shape = type)) +
-    geom_vline(xintercept = minor, color = "grey92") +                 
-    geom_point(size = 2.5) +  
-    geom_line(aes(group = type)) +
-    geom_hline(yintercept = 0, linetype = "dashed") +
-    ylab(label = "Temperature (˚C)") +
-    xlab(label = "Year") +
-    theme_bw() +
-    theme(axis.text.x = element_text(angle = 60, hjust = 1),
-          panel.grid.minor = element_blank(),
-          panel.grid.major.x = element_blank(),
-          legend.title = element_blank(),
-          axis.title.x = 
-            element_text(margin = margin(t = 10, r = 0, b = 0, l = 0)),
-          axis.title.y = 
-            element_text(margin = margin(t = 0, r = 10, b = 0, l = 0))) +
-    theme(plot.margin = unit(c(1, 1, 1, 1), "cm")) +
-    scale_color_manual(values = c("#004452", "#B5BA4F", "#FF6D33"),
-                       labels = c("Mean", "Maximum", "Minimum")) + 
-    scale_shape_discrete(labels = c("Mean", "Maximum", "Minimum")) +
-    scale_x_continuous(n.breaks = 8))
-
-ggsave("Figures/climate_plot_year.png", plot = temp_year, 
-       width = 6.5, height = 5.5, units = "in")
-
-# adding the mixed effects model to the plot 
-temp_month_season <- lmer(temp ~ year + (1|month) + (1|season), data = climate, REML = F)
-
-# creating model predictions 
-pred.mm <- ggpredict(temp_month_season, terms = c("year"))  
-
-# plotting the predictions 
-(temp_year_model <- ggplot(pred.mm) + 
-    geom_vline(xintercept = minor, color = "grey92") +                   
-    geom_line(aes(x = x, y = predicted), color = "#004452") +   # slope
-    geom_ribbon(aes(x = x, ymin = conf.low, 
-                    ymax = conf.high), 
-                fill = "lightgrey", alpha = 0.5) +  # error band
-    geom_point(size = 2.5, data = sum_year_long, aes(x = year, y = temp, 
-                                                     color = type, shape = type)) +
-    geom_line(data = sum_year_long, aes(x = year, y = temp, 
-                                        color = type, group = type)) +
-    geom_hline(yintercept = 0, linetype = "dashed") +
-    ylab(label = "Temperature (˚C)") +
-    xlab(label = "Year") +
-    theme_bw() +
-    theme(axis.text.x = element_text(angle = 60, hjust = 1),
-          panel.grid.minor = element_blank(),
-          panel.grid.major.x = element_blank(),
-          legend.title = element_blank(),
-          axis.title.x = 
-            element_text(margin = margin(t = 10, r = 0, b = 0, l = 0)),
-          axis.title.y = 
-            element_text(margin = margin(t = 0, r = 10, b = 0, l = 0))) +
-    theme(plot.margin = unit(c(1, 1, 1, 1), "cm")) +
-    scale_color_manual(values = c("#004452", "#B5BA4F", "#FF6D33"),
-                       labels = c("Mean", "Maximum", "Minimum")) + 
-    scale_shape_discrete(labels = c("Mean", "Maximum", "Minimum")) +
-    scale_x_continuous(n.breaks = 8))
-
-ggsave("Figures/climate_plot_model.png", plot = temp_year_model, 
-       width = 6.5, height = 5.5, units = "in")
-
-## For the appendix
-# plotting the average, minimum and maximum temperature over time (by season) 
-(temp_season <- ggplot(sum_season_long, aes(x = season, y = temp, 
-                                            color = type, shape = type)) +
-    geom_point(size = 2.5) +  
-    geom_line(aes(group = type)) +
-    geom_hline(yintercept = 0, linetype = "dashed") +
-    ylab(label = "Temperature (˚C)") +
-    xlab(label = "Season") +
-    theme_bw() +
-    theme(axis.text.x = element_text(angle = 60, hjust = 1),
-          panel.grid.minor = element_blank(),
-          panel.grid.major.x = element_blank(),
-          legend.title = element_blank(),
-          axis.title.x = 
-            element_text(margin = margin(t = 10, r = 0, b = 0, l = 0)),
-          axis.title.y = 
-            element_text(margin = margin(t = 0, r = 10, b = 0, l = 0))) +
-    theme(plot.margin = unit(c(1, 1, 1, 1), "cm")) +
-    scale_color_manual(values = c("#004452", "#B5BA4F", "#FF6D33"),
-                       labels = c("Mean", "Maximum", "Minimum")) + 
-    scale_shape_discrete(labels = c("Mean", "Maximum", "Minimum")))
-
-ggsave("Figures/climate_plot_season.png", plot = temp_season, 
-       width = 6.5, height = 5.5, units = "in")
-
-# creating a faceted plot of temperature over time
 str(climate)
 climate$date_time <- as.POSIXct(climate$date_time)
+str(climate)
 
-(temp_facet <- ggplot(climate, aes(x = date_time, y = temp, fill = season)) +   
-    geom_line(aes(color = season)) +
-    facet_wrap(vars(season), ncol = 3, scales = "free_x") +
-    ylab(label = "Temperature (˚C)") +
-    xlab(label = "Date") +
-    theme_bw() +
-    theme(legend.position = "none",
-          axis.title.x = 
-            element_text(margin = margin(t = 10, r = 0, b = 0, l = 0)),
-          axis.title.y = 
-            element_text(margin = margin(t = 0, r = 10, b = 0, l = 0))) +
-    theme(plot.margin = unit(c(1, 1, 1, 1), "cm")) +
-    scale_x_datetime(date_labels = "%b", date_breaks = "1 month") +
-    scale_color_manual(values = c("#DADDA7", "#D1D491", "#C8CC7B", "#BEC365", 
-                                  "#B5BA4F", "#A2A741", "#8B8F38", "#74772E", 
-                                  "#5D5F25", "#45481C", "#2E3013", "#171809", 
-                                  "#000000")))
+# plotting only 2004/2005 season
+climate <- climate %>% 
+              filter(season == "2004/5")
+summary(climate)
 
-ggsave("Figures/climate_facet.png", plot = temp_facet, 
-       width = 7, height = 7, units = "in")
+(temp2004 <- ggplot(climate, aes(x = date_time, y = temp)) +   
+                geom_line(color = "#F0A202") +
+                geom_smooth(method = "lm", se = TRUE, color = "#A26C02") +
+                ylab(label = "Temperature (˚C)") +
+                xlab(label = "Date") +
+                theme_bw() +
+                theme(legend.position = "none",
+                      axis.title.x = 
+                        element_text(margin = margin(t = 10, r = 0, b = 0, l = 0)),
+                      axis.title.y = 
+                        element_text(margin = margin(t = 0, r = 10, b = 0, l = 0))) +
+                theme(plot.margin = unit(c(1, 1, 1, 1), "cm")) +
+                scale_x_datetime(date_labels = "%b", date_breaks = "1 month"))
+
+ggsave("Figures/temp_plot.png", plot = temp2004, 
+       width = 7.5, height = 5.5, units = "in")
 
 ### Microclimate Data ----
 microlog <- read.csv("Data/microclimate.csv")
