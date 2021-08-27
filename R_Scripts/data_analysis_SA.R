@@ -965,6 +965,7 @@ climate <- climate %>%
               filter(season == "2004/5")
 summary(climate)
 
+
 ## Simple linear model 
 temp_lm <- lm(temp ~ date_time, data = climate)
 summary(temp_lm)  # 2.06e-6, p = <2e-16, very significant

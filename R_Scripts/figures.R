@@ -369,8 +369,8 @@ climate <- climate %>%
 summary(climate)
 
 (temp2004 <- ggplot(climate, aes(x = date_time, y = temp)) +   
-                geom_line(color = "#F0A202") +
-                geom_smooth(method = "lm", se = TRUE, color = "#A26C02") +
+                geom_line(color = "#FDB321") +
+                geom_smooth(method = "lm", se = TRUE, color = "#CA8702") +
                 ylab(label = "Temperature (˚C)") +
                 xlab(label = "Date") +
                 theme_bw() +
@@ -383,7 +383,7 @@ summary(climate)
                 scale_x_datetime(date_labels = "%b", date_breaks = "1 month"))
 
 ggsave("Figures/temp_plot.png", plot = temp2004, 
-       width = 7.5, height = 5.5, units = "in")
+       width = 7, height = 5.2, units = "in")
 
 ### Microclimate Data ----
 microlog <- read.csv("Data/microclimate.csv")
