@@ -369,8 +369,8 @@ climate <- climate %>%
 summary(climate)
 
 (temp2004 <- ggplot(climate, aes(x = date_time, y = temp)) +   
-                geom_line(color = "#FDB321") +
-                geom_smooth(method = "lm", se = TRUE, color = "#CA8702") +
+                geom_line(color = "#12A7B8") +
+                geom_smooth(method = "lm", se = TRUE, color = "#0B6A74") +
                 ylab(label = "Temperature (˚C)") +
                 xlab(label = "Date") +
                 theme_bw() +
