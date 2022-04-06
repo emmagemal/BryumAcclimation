@@ -201,33 +201,32 @@ grid.arrange(SAratio_plot, DWratio_plot, ncol = 2)
 
 
 ### Light Response Curves ----
-light <- read.csv("Data/full_lightresponses_revised.csv") 
+light <- read.csv("Data/lightresponses_revised.csv") 
 str(light)
 
 # calculating averages, standard deviation and standard error
 light_sum <- light %>% 
                 group_by(Lcuv, treatment_type) %>% 
-                mutate(seCO2 = std.error(CO2)) %>% 
-                summarise(avgCO2 = mean(CO2),
-                          seCO2 = mean(seCO2)) %>% 
+                mutate(seNP = std.error(NP_SA)) %>% 
+                summarise(avgNP = mean(NP_SA),
+                          seNP = mean(seNP)) %>% 
                 na.omit()
 
 light_sum2 <- light %>% 
-  group_by(Lcuv, treatment_type) %>% 
-  summarise(avgCO2 = mean(CO2),
-            sdCO2 = sd(CO2)) %>%    # if I want to SD instead of SE
-  na.omit()
+                group_by(Lcuv, treatment_type) %>% 
+                summarise(avgNP = mean(NP_SA),
+                          sdNP = sd(NP_SA)) %>%    # if I want to SD instead of SE
+                na.omit()
 
 
 # plotting the light response curves
-(light_plots <- ggplot(light_sum, aes(x = Lcuv, y = avgCO2)) +
+(light_plots <- ggplot(light_sum, aes(x = Lcuv, y = avgNP)) +
                   geom_hline(yintercept = 0, size = 0.5, linetype = "dotted") +               
                   geom_point(aes(color = treatment_type), size = 2.2) +
                   geom_line(aes(color = treatment_type)) +
-                  geom_errorbar(aes(ymin = avgCO2-seCO2, ymax = avgCO2+seCO2, 
+                  geom_errorbar(aes(ymin = avgNP-seNP, ymax = avgNP+seNP, 
                                     color = treatment_type, width = 20), alpha = 0.8) + 
-                  ylab(label = expression(paste(
-                    "\u0394", "CO"[2], " (rel. ppm)"))) +  # check units 
+                  ylab(label = expression(Assimilation~per~area~(µmol~m^-2~s^-1))) +  
                   xlab(label = expression(paste(
                     "PPFD ", "(µmol ", "m"^-2, " s"^-1, ")"))) +
                   theme_bw() +
