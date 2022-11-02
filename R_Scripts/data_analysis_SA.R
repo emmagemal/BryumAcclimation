@@ -1,11 +1,11 @@
-# Data Analysis and Calculations USING SURFACE AREA (not DW)
-# Emma Gemal, s1758915@sms.ed.ac.uk
-# University of Edinburgh 
+# Data Analysis and Calculations for Pulse Warming Experiment 
+# Emma Gemal, emmagemal@outlook.com
+# University of Edinburgh, Stockholm University 
 
 ### Library ----
 library(tidyverse)
 library(retistruct)
-library(plotrix)
+library(plotrix)  # for std.error 
 library(lme4)
 library(lmerTest)
 library(lmtest)
@@ -13,27 +13,43 @@ library(car)
 library(sjPlot)
 library(MuMIn)
 
-### NP/DR Data Manipulation ----
-fulldata <- read.csv("Data/raw_np_dr_data.csv", header = TRUE)
-avgdata <- read.csv("Data/np_dr_averages.csv", header = TRUE)
+### NP/DR/GP Data Manipulation ----
+fulldata <- read.csv("Data/Pulse_Experiment/raw_np_dr_data.csv", header = TRUE)
+avgdata <- read.csv("Data/Pulse_Experiment/np_dr_averages.csv", header = TRUE)
 
 str(fulldata)
 str(avgdata)
 
 fulldata <- fulldata %>% 
+              dplyr::select(-c(np_DW, np_Chl)) %>% 
               mutate(treatment_type = as.factor(treatment_type),
                      type = as.factor(type),
-                     sample = as.factor(sample))
+                     sample = as.factor(sample)) 
+
+# calculating GP
+fulldata_wide <- fulldata %>% 
+                    pivot_wider(names_from = type, values_from = np_SA) %>% 
+                    mutate(GP = NP - DR) %>% 
+                    dplyr::select(-c(NP, DR)) %>% 
+                    group_by(temp, treatment_type) %>% 
+                    summarize(avgSA = mean(GP),
+                              se_SA = std.error(GP)) %>% 
+                    mutate(type = "GP")
+
+avgdata <- full_join(avgdata, fulldata_wide)
 
 avgdata <- avgdata %>% 
               mutate(treatment_type = as.factor(treatment_type),
-                     type = as.factor(type))
+                     type = as.factor(type)) %>% 
+              dplyr::select(!c(avgChl, avgDW, se_DW, se_Chl))
 
 # subsetting average NP and DR for calculations
 np_only <- avgdata %>% 
               filter(type == "NP")
 dr_only <- avgdata %>% 
               filter(type == "DR")
+gp_only <- avgdata %>% 
+              filter(type == "GP")
 
 np_control <- np_only %>% 
                 filter(treatment_type == "control")
@@ -54,6 +70,66 @@ np_full_control <- np_full %>%
                       filter(treatment_type == "control")
 np_full_treatment <- np_full %>% 
                         filter(treatment_type == "treatment")
+
+### Carbon Use Efficiency ----
+# calculating CUE
+cuedata <- fulldata %>% 
+              pivot_wider(names_from = type, values_from = np_SA) %>% 
+              group_by(sample, temp, treatment_type) %>% 
+              mutate(CUE = NP/(NP-DR)*100) %>% 
+              dplyr::select(!c(DR, NP)) 
+            
+cue_sum <- cuedata %>% 
+              group_by(temp, treatment_type) %>% 
+              summarize(avgCUE = mean(CUE),
+                        seCUE = std.error(CUE)) %>% 
+              pivot_wider(names_from = treatment_type, values_from = c(avgCUE, seCUE)) %>% 
+              mutate(CUE_diff = ((avgCUE_treatment-avgCUE_control)/abs(avgCUE_control)*100))
+
+mean(cue_sum$CUE_diff)  # 236.4434
+
+# t-test
+t.test(CUE ~ treatment_type, data = cuedata)  # t = -2.9103, df = 52.826, p-value = 0.005275**
+
+# t-test (averages)
+t.test(avgCUE ~ treatment_type, data = cue_sum)  # t = -1.4134, df = 10.088, p-value = 0.1876
+
+## T-test for each temperature step separately 
+# 2˚C
+cue2 <- cuedata %>% filter(temp == 2)
+t.test(CUE ~ treatment_type, data = cue2)
+  # t = -1.6484, df = 3.4419, p-value = 0.186
+
+# 5˚C
+cue5 <- cuedata %>% filter(temp == 5)
+t.test(CUE ~ treatment_type, data = cue5)
+  # t = -1.0324, df = 9.905, p-value = 0.3265
+
+# 10˚C
+cue10 <- cuedata %>% filter(temp == 10)
+t.test(CUE ~ treatment_type, data = cue10)
+  # -1.4864, df = 9.3348, p-value = 0.1701
+
+# 15˚C
+cue15 <- cuedata %>% filter(temp == 15)
+t.test(CUE ~ treatment_type, data = cue15)
+  # t = -1.9169, df = 5.5157, p-value = 0.108
+
+# 20˚C
+cue20 <- cuedata %>% filter(temp == 20)
+t.test(CUE ~ treatment_type, data = cue20)
+  # t = -2.3523, df = 6.7252, p-value = 0.05237
+
+# 25˚C
+cue25 <- cuedata %>% filter(temp == 25)
+t.test(CUE ~ treatment_type, data = cue25)
+  # t = 1.4901, df = 5.1484, p-value = 0.1947
+
+# 30˚C
+cue30 <- cuedata %>% filter(temp == 30)
+t.test(CUE ~ treatment_type, data = cue30)
+  # t = -0.90163, df = 3.0154, p-value = 0.4334
+
 
 ### Calculating Average Optimum Temperature Ranges ----
 summary(np_control)  # max control NP = 1.7676
@@ -319,6 +395,7 @@ opt_stats <- opt_stats %>%
                 mutate(treatment_type = case_when(grepl("C", sample_max) ~ "control",
                                                   grepl("T", sample_max) ~ "treatment"))
 
+  
 ## Testing significance of optimum temperature ranges 
 t.test(opt_temp_max ~ treatment_type, data = opt_stats)   # control = 10.9, treatment = 12.1
 # p = 0.689, t = -0.412, DF = 10 (9.736)
@@ -337,6 +414,62 @@ opt_sum <- opt_stats %>%
                         se_min = mean(se_min),
                         sd_max = sd(opt_temp_max),
                         sd_min = sd(opt_temp_min))
+
+### Optimum Temperature (Max NP) Statistics ----
+## Control samples optimum temperature calculations 
+# maximum net photosynthesis for each sample 
+summary(np_full_control$np_SA[np_full_control$sample == "C1"])  # max C1 = 3.1626
+summary(np_full_control$np_SA[np_full_control$sample == "C2"])  # max C2 = 0.7603
+summary(np_full_control$np_SA[np_full_control$sample == "C3"])  # max C3 = 2.63050 
+summary(np_full_control$np_SA[np_full_control$sample == "C4"])  # max C4 = 4.576 
+summary(np_full_control$np_SA[np_full_control$sample == "C5"])  # max C5 = 1.21684 
+summary(np_full_control$np_SA[np_full_control$sample == "C6"])  # max C6 = 1.3988 
+
+# visualizing the intersection points 
+hline_c <- data.frame(z = c(3.1626, 0.7603, 2.63050, 4.576, 1.21684, 1.3988), 
+                      sample = factor(c("C1", "C2", "C3", "C4", "C5", "C6")))
+
+(np_control_plot <- ggplot(np_full_control, aes(x = temp, y = np_SA)) +
+                      geom_point(aes(color = sample), 
+                                 size = 2, alpha = 0.85) +
+                      geom_line(aes(color = sample)) +
+                      facet_wrap(~sample) +
+                      geom_hline(data = hline_c, aes(yintercept = z)))
+
+## Treatment samples optimum temperature calculations
+# maximum net photosynthesis for each sample 
+summary(np_full_treatment$np_SA[np_full_treatment$sample == "T1"])  # max T1 = 3.3194
+summary(np_full_treatment$np_SA[np_full_treatment$sample == "T2"])  # max T2 = 4.9480
+summary(np_full_treatment$np_SA[np_full_treatment$sample == "T3"])  # max T3 = 6.2579
+summary(np_full_treatment$np_SA[np_full_treatment$sample == "T4"])  # max T4 = 4.794
+summary(np_full_treatment$np_SA[np_full_treatment$sample == "T5"])  # max T5 = 6.9659
+summary(np_full_treatment$np_SA[np_full_treatment$sample == "T6"])  # max T6 = 9.2087
+
+# visualizing the intersection points 
+hline_t <- data.frame(z = c(3.3194, 4.9480, 6.2579, 4.794, 6.9659, 9.2087), 
+                      sample = factor(c("T1", "T2", "T3", "T4", "T5", "T6")))
+
+(np_treatment_plot <- ggplot(np_full_treatment, aes(x = temp, y = np_SA)) +
+                        geom_point(aes(color = sample), 
+                                   size = 2, alpha = 0.85) +
+                        geom_line(aes(color = sample)) +
+                        facet_wrap(~sample) +
+                        geom_hline(data = hline_t, aes(yintercept = z)))
+
+## Creating a combined dataframe for analysis 
+opt_temp <- c(15, 2, 2, 10, 10, 10, 2, 15, 15, 10, 10, 10)
+sample <- c("C1", "C2", "C3", "C4", "C5", "C6", "T1", "T2", "T3", "T4", "T5", "T6")
+
+opt_temp <- data.frame(opt_temp, sample)
+
+opt_temp <- opt_temp %>% 
+              mutate(treatment_type = case_when(grepl("C", sample) ~ "control",
+                                                grepl("T", sample) ~ "treatment"))
+
+## Testing significance of optimum temperatures 
+t.test(opt_temp ~ treatment_type, data = opt_temp)   # control = 8.2, treatment = 10.3
+# p = 0.467, t = -0.75638, DF = 10 (9.9376)
+
 
 
 ### Negative NP Statistics ----
@@ -450,7 +583,7 @@ negNP_stats <- negNP_stats %>%
                   mutate(treatment_type = case_when(grepl("C", sample) ~ "control",
                                                     grepl("T", sample) ~ "treatment"))
 
-## Testing significance of optimum temperature ranges 
+## Testing significance of negative NP threshold 
 t.test(negNP ~ treatment_type, data = negNP_stats)   # control = 17.939, treatment = 23.822
 # t = -1.658, DF = 5.0987, p = 0.1571
 
@@ -501,6 +634,43 @@ maxNP_sum <- maxNP_stats %>%
                 summarise(avg = mean(maxNP),
                           se = mean(se),
                           sd = sd(maxNP))
+
+
+
+### DR and GP Rate Comparisons ----
+## DR
+# difference in DR between control and treatment 
+lmdr <- lm(avgSA ~ temp + treatment_type, data = dr_only)
+summary(lmdr)   # treatment significantly lower than control (estimate = -1.025, p = 0.0116)
+
+t.test(avgSA ~ treatment_type, paired = TRUE, data = dr_only)  # t = 3.6304, df = 6, 
+                                                               # p-value = 0.01096 (significant)
+
+# difference in % 
+dr_perc <- dr_only %>% 
+              dplyr::select(-se_SA) %>% 
+              pivot_wider(names_from = treatment_type, values_from = avgSA) %>% 
+              mutate(perc_diff = ((treatment-control)/control)*100)
+
+mean(dr_perc$perc_diff)   # 28.62236
+std.error(dr_perc$perc_diff)   # 7.776387
+
+## GP
+# difference in DR between control and treatment 
+lmgp <- lm(avgSA ~ temp + treatment_type, data = gp_only)
+summary(lmgp)   # treatment significantly higher than control (estimate = 3.48, p = 0.00016)
+
+t.test(avgSA ~ treatment_type, paired = TRUE, data = gp_only)  # t = -5.996, df = 6, 
+                                                               # p-value = 0.00097 (significant)
+
+# difference in % 
+gp_perc <- gp_only %>% 
+              dplyr::select(-se_SA) %>% 
+              pivot_wider(names_from = treatment_type, values_from = avgSA) %>% 
+              mutate(perc_diff = ((treatment-control)/control)*100)
+
+mean(gp_perc$perc_diff)   # 94.39904
+std.error(gp_perc$perc_diff)   # 12.41984
 
 
 ### Models for NP ----
@@ -596,7 +766,7 @@ anova(mixed_sample_dr)   # temp: F = 369.69, p = <2e-16, DF = 59.69
 # treatment_type is not significant, temp is significant 
 
 ### Average Light Response Curve Calculations ----
-light <- read.csv("Data/lightresponses_revised.csv")
+light <- read.csv("Data/Pulse_Experiment/lightresponses_revised.csv")
 str(light)
 
 
@@ -839,7 +1009,7 @@ light_sum_lcp <- light_lcp %>%
 
 
 ### Optimal Water Content Ranges ----
-water <- read.csv("Data/water_content_full.csv")
+water <- read.csv("Data/Pulse_Experiment/water_content_full.csv")
 
 water_long <- water %>% 
   pivot_longer(cols = c(1:2),
@@ -899,7 +1069,7 @@ line.line.intersection(t_b, t_c, treatment_y, treatment_y2,
 
 
 ### Chlorophyll Content ----
-chlr <- read.csv("Data/chlorophyll.csv")
+chlr <- read.csv("Data/Pulse_Experiment/chlorophyll.csv")
 
 str(chlr)
 
@@ -907,77 +1077,3 @@ t.test(chl_SA ~ type, data = chlr)  # p = 0.047 (is significantly different)
 # t = -2.2996, DF = 8.7
 # control = 736475.4, treatment = 1250650.3
 
-### Seasonal Change Models ----
-## NP, DR and GP across the season
-season <- read.csv("Data/season_full.csv")
-
-str(season)
-season <- season %>% 
-            mutate(date = as.Date(date, format = "%d/%m/%Y"))
-str(season)
-
-season_dr <- lm(DR ~ date, data = season)
-season_np <- lm(NP ~ date, data = season)
-season_gp <- lm(GP ~ date, data = season)
-
-plot(season_dr)   
-hist(resid(season_dr))  # not super normally distributed residuals, but it's fine 
-
-plot(season_np)   
-hist(resid(season_np))
-
-plot(season_gp)   
-hist(resid(season_gp))
-
-summary(season_dr)   # slope = 0.122 ± 0.021
-                     # p = 1.05e-5, t = 5.68 (significant)
-anova(season_dr)
-
-summary(season_np)   # slope = -0.013 ± 0.0065
-                     # p = 0.061, t = -1.97 (NOT significant)
-anova(season_np)
-
-summary(season_gp)   # slope = 0.109 ± 0.0025
-                     # p = 2.19e-4, t = 4.42 (significant)
-anova(season_gp)
-
-## Chlorophyll across the season
-chl_season <- read.csv("Data/chl_season.csv")
-
-str(chl_season)
-chl_season <- chl_season %>% 
-                mutate(date = as.Date(date, format = "%d/%m/%Y")) %>% 
-                dplyr::select(date, chl_mg, chl_mmol)
-str(chl_season)
-
-chl_lm <- lm(chl_mg ~ date, data = chl_season)
-
-plot(chl_lm)   
-hist(resid(chl_lm))
-
-summary(chl_lm)
-anova(chl_lm)
-
-
-### Models for Climate (Temperature) ----
-climate <- read.csv("Data/climate_combo.csv")
-
-str(climate)
-climate$date_time <- as.POSIXct(climate$date_time)
-str(climate)
-
-# only 2004/2005 season
-climate <- climate %>% 
-              filter(season == "2004/5")
-summary(climate)
-
-
-## Simple linear model 
-temp_lm <- lm(temp ~ date_time, data = climate)
-summary(temp_lm)  # 2.06e-6, p = <2e-16, very significant
-                  # adjusted R2 = 0.574
-
-# checking model assumptions 
-plot(temp_lm)  # seems normally distributed 
-hist(resid(temp_lm))  
-bptest(temp_lm)  # there is heteroskedasticity in the model though

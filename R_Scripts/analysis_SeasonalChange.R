@@ -5,15 +5,15 @@
 ### Library ----
 library(tidyverse)
 
-### Seasonal Change Models ----
-## NP, DR and GP across the season
-season <- read.csv("Data/season_full.csv")
+### NP, DR and GP Seasonal Changes ----
+season <- read.csv("Data/Seasons/season_full.csv")
 
 str(season)
 season <- season %>% 
-  mutate(date = as.Date(date, format = "%d/%m/%Y"))
+            mutate(date = as.Date(date, format = "%d/%m/%Y"))
 str(season)
 
+# model creation 
 season_dr <- lm(DR ~ date, data = season)
 season_np <- lm(NP ~ date, data = season)
 season_gp <- lm(GP ~ date, data = season)
@@ -27,42 +27,52 @@ hist(resid(season_np))
 plot(season_gp)   
 hist(resid(season_gp))
 
+## Results 
 # DR
 summary(season_dr)   # slope = 0.122 ± 0.021
                      # p = 1.05e-5, t = 5.68 (significant)
-anova(season_dr)
+                     # adjusted R2 = 0.576
+anova(season_dr)     # F = 32.21, p = 1.045e-5 
 
 # NP
 summary(season_np)   # slope = -0.013 ± 0.0065
                      # p = 0.061, t = -1.97 (NOT significant)
-anova(season_np)
+                     # adjusted R2 = 0.112
+anova(season_np)     # F = 3.89, p = 0.0614
 
 # GP
 summary(season_gp)   # slope = 0.109 ± 0.0025
                      # p = 2.19e-4, t = 4.42 (significant)
-anova(season_gp)
+                     # adjusted R2 = 0.446
+anova(season_gp)     # F = 19.498, p = 0.00022 
 
 
-### Models for Climate (Temperature) ----
+### Climate and Chlorophyll Changes ----
 ## Chlorophyll across the season
-chl_season <- read.csv("Data/chl_season.csv")
+chl_season <- read.csv("Data/Seasons/chl_season.csv")
 
 str(chl_season)
+
 chl_season <- chl_season %>% 
-  mutate(date = as.Date(date, format = "%d/%m/%Y")) %>% 
-  dplyr::select(date, chl_mg, chl_mmol)
+                mutate(date = as.Date(date, format = "%d/%m/%Y")) %>% 
+                dplyr::select(date, chl_mg, chl_mmol)
 str(chl_season)
 
+# model 
 chl_lm <- lm(chl_mg ~ date, data = chl_season)
 
 plot(chl_lm)   
 hist(resid(chl_lm))
 
-summary(chl_lm)
-anova(chl_lm)
+# results 
+summary(chl_lm)   # slope = -8.846
+                  # p = 0.000112 (significant)
+                  # adjusted R2 = 0.3577
+anova(chl_lm)  # F = 19.374, p = 0.000112 
 
 
-climate <- read.csv("Data/climate_combo.csv")
+## Temperature across the season 
+climate <- read.csv("Data/Seasons/climate_combo.csv")
 
 str(climate)
 climate$date_time <- as.POSIXct(climate$date_time)
@@ -70,7 +80,7 @@ str(climate)
 
 # only 2004/2005 season
 climate <- climate %>% 
-  filter(season == "2004/5")
+              filter(season == "2004/5")
 summary(climate)
 
 
