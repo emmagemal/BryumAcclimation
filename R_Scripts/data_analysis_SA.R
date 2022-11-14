@@ -15,10 +15,10 @@ library(MuMIn)
 
 ### NP/DR/GP Data Manipulation ----
 fulldata <- read.csv("Data/Pulse_Experiment/raw_np_dr_data.csv", header = TRUE)
-avgdata <- read.csv("Data/Pulse_Experiment/np_dr_averages.csv", header = TRUE)
+# avgdata <- read.csv("Data/Pulse_Experiment/np_dr_averages.csv", header = TRUE)
 
 str(fulldata)
-str(avgdata)
+# str(avgdata)
 
 fulldata <- fulldata %>% 
               dplyr::select(-c(np_DW, np_Chl)) %>% 
@@ -26,22 +26,32 @@ fulldata <- fulldata %>%
                      type = as.factor(type),
                      sample = as.factor(sample)) 
 
-# calculating GP
-fulldata_wide <- fulldata %>% 
-                    pivot_wider(names_from = type, values_from = np_SA) %>% 
-                    mutate(GP = NP - DR) %>% 
-                    dplyr::select(-c(NP, DR)) %>% 
-                    group_by(temp, treatment_type) %>% 
-                    summarize(avgSA = mean(GP),
-                              se_SA = std.error(GP)) %>% 
-                    mutate(type = "GP")
+# calculating GP and % max rate data 
+fulldata <- fulldata %>% 
+                pivot_wider(names_from = type, values_from = np_SA) %>% 
+                mutate(GP = NP - DR) %>% 
+                pivot_longer(cols = c("DR", "NP", "GP"), names_to = "type", 
+                             values_to = "np_SA") %>% 
+                mutate(np_SA = abs(np_SA)) %>% 
+                group_by(sample, type) %>% 
+                mutate(perc.max_SA = np_SA/(max(np_SA))*100) %>%  # % max rate (to normalize data)  
+                mutate(np_SA = ifelse(type == "DR", -np_SA, np_SA))
 
-avgdata <- full_join(avgdata, fulldata_wide)
+avg_data <- fulldata %>% 
+              group_by(temp, treatment_type, type) %>% 
+              summarize(avgSA = mean(np_SA),
+                        se_SA = std.error(np_SA),
+                        avgpercSA = mean(perc.max_SA),
+                        sepercSA = std.error(perc.max_SA))
 
-avgdata <- avgdata %>% 
-              mutate(treatment_type = as.factor(treatment_type),
-                     type = as.factor(type)) %>% 
-              dplyr::select(!c(avgChl, avgDW, se_DW, se_Chl))
+# don't need avgdata anymore it seems 
+#avgdata <- full_join(avgdata, dataGP)
+#avgdata <- avgdata %>% 
+#              mutate(treatment_type = as.factor(treatment_type),
+#                     type = as.factor(type)) %>% 
+#              dplyr::select(!c(avgChl, avgDW, se_DW, se_Chl))
+
+
 
 # subsetting average NP and DR for calculations
 np_only <- avgdata %>% 
@@ -86,7 +96,10 @@ cue_sum <- cuedata %>%
               pivot_wider(names_from = treatment_type, values_from = c(avgCUE, seCUE)) %>% 
               mutate(CUE_diff = ((avgCUE_treatment-avgCUE_control)/abs(avgCUE_control)*100))
 
-mean(cue_sum$CUE_diff)  # 236.4434
+cue_sum2 <- cuedata %>% 
+              group_by(treatment_type) %>% 
+              summarize(avgCUE = mean(CUE),
+                        seCUE = std.error(CUE))
 
 # t-test
 t.test(CUE ~ treatment_type, data = cuedata)  # t = -2.9103, df = 52.826, p-value = 0.005275**
@@ -129,6 +142,22 @@ t.test(CUE ~ treatment_type, data = cue25)
 cue30 <- cuedata %>% filter(temp == 30)
 t.test(CUE ~ treatment_type, data = cue30)
   # t = -0.90163, df = 3.0154, p-value = 0.4334
+
+
+### Acclimation Ratios ----
+ratios <- read.csv("Data/Pulse_Experiment/acclimation_ratios.csv")
+str(ratios)
+
+ratios <- ratios %>% dplyr::select(-Chlt.c, -DWt.c)
+
+summary(ratios$SAt.c[ratios$type=="DR"])
+summary(ratios$SAt.c[ratios$type=="NP"])
+
+std.error(ratios$SAt.c[ratios$type=="DR"])
+std.error(ratios$SAt.c[ratios$type=="NP"])
+
+# statistically comparing NP vs. DR
+t.test(SAt.c ~ type, data = ratios)  # t = -2.7934, df = 6.2692, p-value = 0.03001
 
 
 ### Calculating Average Optimum Temperature Ranges ----
@@ -470,6 +499,10 @@ opt_temp <- opt_temp %>%
 t.test(opt_temp ~ treatment_type, data = opt_temp)   # control = 8.2, treatment = 10.3
 # p = 0.467, t = -0.75638, DF = 10 (9.9376)
 
+opt_temp_sum <- opt_temp %>% 
+                  group_by(treatment_type) %>%
+                  summarise(avg = mean(opt_temp),
+                            se = std.error(opt_temp))
 
 
 ### Negative NP Statistics ----
@@ -583,9 +616,25 @@ negNP_stats <- negNP_stats %>%
                   mutate(treatment_type = case_when(grepl("C", sample) ~ "control",
                                                     grepl("T", sample) ~ "treatment"))
 
+# including the 3 treatment samples with no negative NP
+negNP2 <- c(25.088, 15.984, 17.764, 24.508, 11.736, 12.551, 19.087, 24.092, 28.287, 30, 30, 30)
+
+sample2 <- c("C1", "C2", "C3", "C4", "C5", "C6", "T1", "T2", "T3", "T4", "T5", "T6")
+
+negNP_stats2 <- data.frame(negNP2, sample2)
+str(negNP_stats2)
+
+negNP_stats2 <- negNP_stats2 %>% 
+                  mutate(treatment_type = case_when(grepl("C", sample) ~ "control",
+                                                    grepl("T", sample) ~ "treatment"))
+
 ## Testing significance of negative NP threshold 
 t.test(negNP ~ treatment_type, data = negNP_stats)   # control = 17.939, treatment = 23.822
 # t = -1.658, DF = 5.0987, p = 0.1571
+
+# with 3 extra samples
+t.test(negNP2 ~ treatment_type, data = negNP_stats2)   # control = 17.939, treatment = 26.911
+# t = -3.0172, df = 9.4182, p-value = 0.01383
 
 ## Determining SE of the average
 negNP_sum <- negNP_stats %>% 
@@ -594,6 +643,12 @@ negNP_sum <- negNP_stats %>%
                 summarise(avg = mean(negNP),
                           se = mean(se),
                           sd = sd(negNP))
+
+negNP_sum2 <- negNP_stats2 %>% 
+                group_by(treatment_type) %>%
+                mutate(se = std.error(negNP2)) %>% 
+                summarise(avg = mean(negNP2),
+                          se = std.error(negNP2))
 
 
 ### Maximum NP Statistics ----
@@ -640,11 +695,15 @@ maxNP_sum <- maxNP_stats %>%
 ### DR and GP Rate Comparisons ----
 ## DR
 # difference in DR between control and treatment 
-lmdr <- lm(avgSA ~ temp + treatment_type, data = dr_only)
-summary(lmdr)   # treatment significantly lower than control (estimate = -1.025, p = 0.0116)
+lmdr <- lm(avgSA ~ temp+treatment_type, data = dr_only)
+summary(lmdr)   # treatment significantly greater DR than control (estimate = -1.025, p = 0.0116)
 
-t.test(avgSA ~ treatment_type, paired = TRUE, data = dr_only)  # t = 3.6304, df = 6, 
-                                                               # p-value = 0.01096 (significant)
+lmdr2 <- lm(avgSA ~ temp*treatment_type, data = dr_only)
+summary(lmdr2)
+
+ggplot(dr_only, aes(y = avgSA, x = temp)) +
+  geom_point(aes(color = treatment_type)) +
+  geom_smooth(method = "lm", aes(color = treatment_type))
 
 # difference in % 
 dr_perc <- dr_only %>% 
@@ -654,6 +713,10 @@ dr_perc <- dr_only %>%
 
 mean(dr_perc$perc_diff)   # 28.62236
 std.error(dr_perc$perc_diff)   # 7.776387
+
+t.test(avgSA ~ treatment_type, paired = TRUE, data = dr_only)  # t = 3.6304, df = 6, 
+                                                               # p-value = 0.01096 (significant)
+
 
 ## GP
 # difference in DR between control and treatment 
