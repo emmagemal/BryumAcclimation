@@ -26,32 +26,17 @@ fulldata <- fulldata %>%
                      type = as.factor(type),
                      sample = as.factor(sample)) 
 
-# calculating GP and % max rate data 
+# calculating GPand % max rate data 
 fulldata <- fulldata %>% 
                 pivot_wider(names_from = type, values_from = np_SA) %>% 
                 mutate(GP = NP - DR) %>% 
                 pivot_longer(cols = c("DR", "NP", "GP"), names_to = "type", 
-                             values_to = "np_SA") %>% 
-                mutate(np_SA = abs(np_SA)) %>% 
-                group_by(sample, type) %>% 
-                mutate(perc.max_SA = np_SA/(max(np_SA))*100) %>%  # % max rate (to normalize data)  
-                mutate(np_SA = ifelse(type == "DR", -np_SA, np_SA))
+                             values_to = "np_SA")
 
 avg_data <- fulldata %>% 
               group_by(temp, treatment_type, type) %>% 
               summarize(avgSA = mean(np_SA),
-                        se_SA = std.error(np_SA),
-                        avgpercSA = mean(perc.max_SA),
-                        sepercSA = std.error(perc.max_SA))
-
-# don't need avgdata anymore it seems 
-#avgdata <- full_join(avgdata, dataGP)
-#avgdata <- avgdata %>% 
-#              mutate(treatment_type = as.factor(treatment_type),
-#                     type = as.factor(type)) %>% 
-#              dplyr::select(!c(avgChl, avgDW, se_DW, se_Chl))
-
-
+                        se_SA = std.error(np_SA))
 
 # subsetting average NP and DR for calculations
 np_only <- avgdata %>% 
@@ -80,7 +65,6 @@ np_full_control <- np_full %>%
                       filter(treatment_type == "control")
 np_full_treatment <- np_full %>% 
                         filter(treatment_type == "treatment")
-
 ### Carbon Use Efficiency ----
 # calculating CUE
 cuedata <- fulldata %>% 
@@ -159,290 +143,6 @@ std.error(ratios$SAt.c[ratios$type=="NP"])
 # statistically comparing NP vs. DR
 t.test(SAt.c ~ type, data = ratios)  # t = -2.7934, df = 6.2692, p-value = 0.03001
 
-
-### Calculating Average Optimum Temperature Ranges ----
-summary(np_control)  # max control NP = 1.7676
-summary(np_treatment)  # max treatment NP = 4.672
-
-summary(dr_control)  # max control DR (min. number) = -8.8291
-summary(dr_treatment)  # max treatment DR = -10.5753
-
-# calculating 90% of the maximum net photosynthesis 
-0.9*1.7676  # control = 1.59084
-0.9*4.672  # treatment = 4.2048
-
-# visualizing the intersection points 
-(np_plot <- ggplot(np_only, aes(x = temp, y = avgSA)) +
-              geom_point(aes(color = treatment_type, shape = treatment_type), 
-                         size = 2.5, alpha = 0.85) +
-              geom_line(aes(color = treatment_type)) +
-              facet_wrap(~treatment_type))
-
-hline <- data.frame(z = c(1.59084, 4.2048), treatment_type = factor(c("control", "treatment")))
-
-(np_plot <- np_plot + geom_hline(data = hline, aes(yintercept = z)))
-
-## Determining the intersection points
-# control intersection points
-c1 <- c(5, 1.3318238)
-c2 <- c(10, 1.7676349)
-c3 <- c(10, 1.7676349)
-c4 <- c(15, 0.8418550)
-control_y <- c(0, 1.59084)
-control_y2 <- c(20, 1.59084)
-
-line.line.intersection(c1, c2, control_y, control_y2, 
-                       interior.only = FALSE)               # x = 7.972˚C
-line.line.intersection(c3, c4, control_y, control_y2, 
-                       interior.only = FALSE)               # x = 10.955˚C
-
-# treatment intersection points 
-t1 <- c(5, 2.4157606)
-t2 <- c(10, 4.6715594)
-t3 <- c(15, 4.5930837)
-t4 <- c(20, 2.7201547)
-treatment_y <- c(0, 4.2048)
-treatment_y2 <- c(30, 4.2048)
-
-line.line.intersection(t1, t2, treatment_y, treatment_y2, 
-                       interior.only = FALSE)               # x = 8.965˚C
-line.line.intersection(t3, t4, treatment_y, treatment_y2, 
-                       interior.only = FALSE)               # x = 16.037˚C
-
-### Optimum Temperature Range Statistics ----
-## Control samples optimum temperature calculations 
-# maximum net photosynthesis for each sample 
-summary(np_full_control$np_SA[np_full_control$sample == "C1"])  # max C1 = 3.1626
-summary(np_full_control$np_SA[np_full_control$sample == "C2"])  # max C2 = 0.7603
-summary(np_full_control$np_SA[np_full_control$sample == "C3"])  # max C3 = 2.63050 
-summary(np_full_control$np_SA[np_full_control$sample == "C4"])  # max C4 = 4.576 
-summary(np_full_control$np_SA[np_full_control$sample == "C5"])  # max C5 = 1.21684 
-summary(np_full_control$np_SA[np_full_control$sample == "C6"])  # max C6 = 1.3988 
-
-# calculating 90% of the maximum net photosynthesis 
-0.9*3.1626  # C1 = 2.84634
-0.9*0.7603  # C2 = 0.68427
-0.9*2.63050  # C3 = 2.36745
-0.9*4.576  # C4 = 4.1184
-0.9*1.21684  # C5 = 1.095156
-0.9*1.3988  # C6 = 1.25892
-
-# visualizing the intersection points 
-hline_c <- data.frame(z = c(2.84634, 0.68427, 2.36745, 4.1184, 1.095156, 1.25892), 
-                      sample = factor(c("C1", "C2", "C3", "C4", "C5", "C6")))
-
-(np_control_plot <- ggplot(np_full_control, aes(x = temp, y = np_SA)) +
-                      geom_point(aes(color = sample), 
-                                 size = 2, alpha = 0.85) +
-                      geom_line(aes(color = sample)) +
-                      facet_wrap(~sample) +
-                      geom_hline(data = hline_c, aes(yintercept = z)))
-
-## Determining the control intersection points
-# C1 intersection points
-c1a <- c(10, 2.06268241)
-c1b <- c(15, 3.16261293)
-c1c <- c(20, 1.28562409)
-control_y_c1 <- c(5, 2.84634)
-control_y2_c1 <- c(25, 2.84634)
-
-line.line.intersection(c1a, c1b, control_y_c1, control_y2_c1, 
-                       interior.only = FALSE)               # x = 13.562˚C
-line.line.intersection(c1b, c1c, control_y_c1, control_y2_c1, 
-                       interior.only = FALSE)               # x = 15.843˚C
-
-# C2 intersection points
-c2a <- c(2, 0.76027316)
-c2b <- c(5, 0.51264099)
-control_y_c2 <- c(0, 0.68427)
-control_y2_c2 <- c(10, 0.68427)
-
-line.line.intersection(c2a, c2b, control_y_c2, control_y2_c2, 
-                       interior.only = FALSE)               # x = 2.921˚C
-
-# C3 intersection points 
-
-# (new intersection, barely intersects but it does)
-c3c <- c(10, 1.28028326)
-c3d <- c(15, 2.42153802)
-c3e <- c(20, -1.95855397)
-control_y_c3b <- c(10, 2.36745)
-control_y2_c3b <- c(20, 2.36745)
-
-line.line.intersection(c3c, c3d, control_y_c3b, control_y2_c3b, 
-                       interior.only = FALSE)               # x = 14.763˚C
-line.line.intersection(c3d, c3e, control_y_c3b, control_y2_c3b, 
-                       interior.only = FALSE)               # x = 15.062˚C
-
-# C4 intersection points
-c4a <- c(5, 2.74946746)
-c4b <- c(10, 4.57602446)
-c4c <- c(15, 2.60613202)
-control_y_c4 <- c(2, 4.1184)
-control_y2_c4 <- c(20, 4.1184)
-
-line.line.intersection(c4a, c4b, control_y_c4, control_y2_c4, 
-                       interior.only = FALSE)               # x = 8.747˚C
-line.line.intersection(c4b, c4c, control_y_c4, control_y2_c4, 
-                       interior.only = FALSE)               # x = 11.162˚C
-
-# C5 intersection points
-c5a <- c(5, 0.20439546)
-c5b <- c(10, 1.21684173)
-c5c <- c(15, -2.28702710)
-control_y_c5 <- c(2, 1.095156)
-control_y2_c5 <- c(20, 1.095156)
-
-line.line.intersection(c5a, c5b, control_y_c5, control_y2_c5, 
-                       interior.only = FALSE)               # x = 9.399˚C
-line.line.intersection(c5b, c5c, control_y_c5, control_y2_c5, 
-                       interior.only = FALSE)               # x = 10.174˚C
-
-# C6 intersection points
-c6a <- c(5, 0.94727218)
-c6b <- c(10, 1.39880761)
-c6c <- c(15, -1.34316394)
-control_y_c6 <- c(2, 1.25892)
-control_y2_c6 <- c(20, 1.25892)
-
-line.line.intersection(c6a, c6b, control_y_c6, control_y2_c6, 
-                       interior.only = FALSE)               # x = 8.451˚C
-line.line.intersection(c6b, c6c, control_y_c6, control_y2_c6, 
-                       interior.only = FALSE)               # x = 10.255˚C
-
-## Treatment samples optimum temperature calculations
-# maximum net photosynthesis for each sample 
-summary(np_full_treatment$np_SA[np_full_treatment$sample == "T1"])  # max T1 = 3.3194
-summary(np_full_treatment$np_SA[np_full_treatment$sample == "T2"])  # max T2 = 4.9480
-summary(np_full_treatment$np_SA[np_full_treatment$sample == "T3"])  # max T3 = 6.2579
-summary(np_full_treatment$np_SA[np_full_treatment$sample == "T4"])  # max T4 = 4.794
-summary(np_full_treatment$np_SA[np_full_treatment$sample == "T5"])  # max T5 = 6.9659
-summary(np_full_treatment$np_SA[np_full_treatment$sample == "T6"])  # max T6 = 9.2087
-
-# calculating 90% of the maximum net photosynthesis 
-0.9*3.3194  # T1 = 2.98746
-0.9*4.9480  # T2 = 4.4532
-0.9*6.2579  # T3 = 5.63211
-0.9*4.794  # T4 = 4.3146
-0.9*6.9659  # T5 = 6.26931
-0.9*9.2087  # T6 = 8.28783
-
-# visualizing the intersection points 
-hline_t <- data.frame(z = c(2.98746, 4.4532, 5.63211, 4.3146, 6.26931, 8.28783), 
-                      sample = factor(c("T1", "T2", "T3", "T4", "T5", "T6")))
-
-(np_treatment_plot <- ggplot(np_full_treatment, aes(x = temp, y = np_SA)) +
-                        geom_point(aes(color = sample), 
-                                   size = 2, alpha = 0.85) +
-                        geom_line(aes(color = sample)) +
-                        facet_wrap(~sample) +
-                        geom_hline(data = hline_t, aes(yintercept = z)))
-
-## Determining the treatment intersection points
-# T1 intersection points
-t1a <- c(2, 3.3193799)
-t1b <- c(5, 2.3092860)
-treatment_y_t1 <- c(0, 2.98746)
-treatment_y2_t1 <- c(10, 2.98746)
-
-line.line.intersection(t1a, t1b, treatment_y_t1, treatment_y2_t1, 
-                       interior.only = FALSE)               # x = 2.986˚C
-
-# T2 intersection points
-t2a <- c(10, 1.2574992)
-t2b <- c(15, 4.9480402)
-t2c <- c(20, 4.3679585)
-treatment_y_t2 <- c(0, 4.4532)
-treatment_y2_t2 <- c(25, 4.4532)
-
-line.line.intersection(t2a, t2b, treatment_y_t2, treatment_y2_t2, 
-                       interior.only = FALSE)               # x = 14.330˚C
-line.line.intersection(t2b, t2c, treatment_y_t2, treatment_y2_t2, 
-                       interior.only = FALSE)               # x = 19.265˚C
-
-# T3 intersection points
-t3a <- c(10, 4.0639881)
-t3b <- c(15, 6.2579372)
-t3c <- c(20, 1.8971447)
-treatment_y_t3 <- c(5, 5.63211)
-treatment_y2_t3 <- c(25, 5.63211)
-
-line.line.intersection(t3a, t3b, treatment_y_t3, treatment_y2_t3, 
-                       interior.only = FALSE)               # x = 13.574˚C
-line.line.intersection(t3b, t3c, treatment_y_t3, treatment_y2_t3, 
-                       interior.only = FALSE)               # x = 15.718˚C
-
-# T4 intersection points
-t4a <- c(5, 3.3360742)
-t4b <- c(10, 4.7935230)
-t4c <- c(15, 3.2997424)
-treatment_y_t4 <- c(2, 4.3146)
-treatment_y2_t4 <- c(20, 4.3146)
-
-line.line.intersection(t4a, t4b, treatment_y_t4, treatment_y2_t4, 
-                       interior.only = FALSE)               # x = 8.357˚C
-line.line.intersection(t4b, t4c, treatment_y_t4, treatment_y2_t4, 
-                       interior.only = FALSE)               # x = 11.603˚C
-
-# T5 intersection points
-t5a <- c(5, 0.4346008)
-t5b <- c(10, 6.9658958)
-t5c <- c(15, 3.1370500)
-treatment_y_t5 <- c(2, 6.26931)
-treatment_y2_t5 <- c(20, 6.26931)
-
-line.line.intersection(t5a, t5b, treatment_y_t5, treatment_y2_t5, 
-                       interior.only = FALSE)               # x = 9.467˚C
-line.line.intersection(t5b, t5c, treatment_y_t5, treatment_y2_t5, 
-                       interior.only = FALSE)               # x = 10.910˚C
-
-# T6 intersection points
-t6a <- c(5, 0.5804601)
-t6b <- c(10, 9.2087301)
-t6c <- c(15, 7.0360861)
-treatment_y_t6 <- c(2, 8.28783)
-treatment_y2_t6 <- c(20, 8.28783)
-
-line.line.intersection(t6a, t6b, treatment_y_t6, treatment_y2_t6, 
-                       interior.only = FALSE)               # x = 9.466˚C
-line.line.intersection(t6b, t6c, treatment_y_t6, treatment_y2_t6, 
-                       interior.only = FALSE)               # x = 12.119˚C
-
-
-## Creating a combined dataframe for analysis 
-opt_temp_max <- c(15.843, 2.921, 15.062, 11.162, 10.174, 10.255,
-                  2.986, 19.265, 15.718, 11.603, 10.910, 12.119)
-opt_temp_min <- c(13.562, 2.921, 14.763, 8.747, 9.399, 8.451, 
-                  2.986, 14.330, 13.574, 8.357, 9.467, 9.466)
-sample_max <- c("C1", "C2", "C3", "C4", "C5", "C6", "T1", "T2", "T3", "T4", "T5", "T6")
-sample_min <- c("C1", "C2", "C3", "C4", "C5", "C6", "T1", "T2", "T3", "T4", "T5", "T6")
-
-opt_stats <- data.frame(opt_temp_max, opt_temp_min, sample_max, sample_min)
-str(opt_stats)
-
-opt_stats <- opt_stats %>% 
-                mutate(treatment_type = case_when(grepl("C", sample_max) ~ "control",
-                                                  grepl("T", sample_max) ~ "treatment"))
-
-  
-## Testing significance of optimum temperature ranges 
-t.test(opt_temp_max ~ treatment_type, data = opt_stats)   # control = 10.9, treatment = 12.1
-# p = 0.689, t = -0.412, DF = 10 (9.736)
-
-t.test(opt_temp_min ~ treatment_type, data = opt_stats)   # control = 9.6, treatment = 9.7
-# p = 0.98, t = -0.023, DF = 10 (9.989)
-
-## Determining SE of the averages
-opt_sum <- opt_stats %>% 
-              group_by(treatment_type) %>%
-              mutate(se_max = std.error(opt_temp_max),
-                     se_min = std.error(opt_temp_min)) %>% 
-              summarise(avg_max = mean(opt_temp_max),
-                        avg_min = mean(opt_temp_min),
-                        se_max = mean(se_max),
-                        se_min = mean(se_min),
-                        sd_max = sd(opt_temp_max),
-                        sd_min = sd(opt_temp_min))
 
 ### Optimum Temperature (Max NP) Statistics ----
 ## Control samples optimum temperature calculations 
@@ -736,7 +436,7 @@ mean(gp_perc$perc_diff)   # 94.39904
 std.error(gp_perc$perc_diff)   # 12.41984
 
 
-### Models for NP ----
+### NP Statistics ----
 ## Checking data assumptions  
 # normally distributed response variable 
 (hist <- ggplot(np_full, aes(x = np_SA)) +
@@ -783,7 +483,8 @@ summary(mixed_sample_np)  # sample explains quite a bit of the residual variance
 anova(mixed_sample_np)   # temp: F = 45.23, p = 7.465e-9, DF = 59.78
 # treatment_type: F = 9.59, p = 0.0095, DF = 11.739
 
-### Models for DR ----
+
+### DR Statistics ----
 ## Checking data assumptions  
 # normally distributed response variable 
 (hist <- ggplot(dr_full, aes(x = np_SA)) +
@@ -828,99 +529,381 @@ anova(mixed_sample_dr)   # temp: F = 369.69, p = <2e-16, DF = 59.69
 # treatment_type: F = 1.811, p = 0.204, DF = 11.68
 # treatment_type is not significant, temp is significant 
 
-### Average Light Response Curve Calculations ----
+
+### NP Non-linear Curve Fits ----
+# control
+poly1c <- lm(avgSA ~ poly(temp, 2), data = np_control)
+
+poly1c.pred <- data.frame(avgSA = rep(NA, 7), temp = rep(NA, 7))
+poly1c.pred$avgSA <- predict(poly1c)
+poly1c.pred$temp <- c(2,5,10,15,20,25,30)
+
+ggplot(np_control, aes(x = temp, y = avgSA)) +
+  geom_point() +
+  geom_line(data = poly1c.pred, aes(x = temp, y = avgSA))
+
+summary(poly1c)
+# adjusted R2 = 0.958
+# p = 0.0003 
+
+# treatment
+poly1t <- lm(avgSA ~ poly(temp, 2), data = np_treatment)
+
+poly1t.pred <- data.frame(avgSA = rep(NA, 7), temp = rep(NA, 7))
+poly1t.pred$avgSA <- predict(poly1t)
+poly1t.pred$temp <- c(2,5,10,15,20,25,30)
+
+ggplot(np_treatment, aes(x = temp, y = avgSA)) +
+  geom_point() +
+  geom_line(data = poly1t.pred, aes(x = temp, y = avgSA))
+
+summary(poly1t)
+# adjusted R2 = 0.876
+# p = 0.0067
+
+### DR Non-linear Curve Fits ----
+# control
+poly2c <- lm(avgSA ~ poly(temp, 2), data = dr_control)
+
+poly2c.pred <- data.frame(avgSA = rep(NA, 7), temp = rep(NA, 7))
+poly2c.pred$avgSA <- predict(poly2c)
+poly2c.pred$temp <- c(2,5,10,15,20,25,30)
+
+ggplot(dr_control, aes(x = temp, y = avgSA)) +
+  geom_point() +
+  geom_line(data = poly2c.pred, aes(x = temp, y = avgSA))
+
+summary(poly2c)
+# adjusted R2 = 0.992
+# p = 1.01e-5
+
+# treatment
+poly2t <- lm(avgSA ~ poly(temp, 2), data = dr_treatment)
+
+poly2t.pred <- data.frame(avgSA = rep(NA, 7), temp = rep(NA, 7))
+poly2t.pred$avgSA <- predict(poly2t)
+poly2t.pred$temp <- c(2,5,10,15,20,25,30)
+
+ggplot(dr_treatment, aes(x = temp, y = avgSA)) +
+  geom_point() +
+  geom_line(data = poly2t.pred, aes(x = temp, y = avgSA))
+
+summary(poly2t)
+# adjusted R2 = 0.992
+# p = 1.02e-5
+
+
+### GP Non-linear Curve Fits ----
+
+## ADD IF NECESSARY ##
+
+## Light Response Curve LSP Statistics ----
 light <- read.csv("Data/Pulse_Experiment/lightresponses_revised.csv")
+
 str(light)
 
-
-light_avg <- light %>% 
-                mutate(Lcuv = as.numeric(Lcuv)) %>% 
-                group_by(Lcuv, treatment_type) %>% 
-                summarise(avgNP = mean(NP_SA)) %>% 
-                filter(Lcuv <= 1000)
-
-summary(light_avg$avgNP[light_avg$treatment_type == "control"])  # max control = 4.333
-summary(light_avg$avgNP[light_avg$treatment_type == "treatment"])  # max treatment = 11.160
-
-0.9*4.333  # 90% max control = 3.8997
-0.9*11.160  # 90% max treatment = 10.044
-
-## Determining the intersection points for 90% LSP
-# visualizing the 90% light saturation point 
-(light_plot <- ggplot(light_avg, aes(x = Lcuv, y = avgNP)) +
-                  geom_point(aes(color = treatment_type)) +
-                  geom_line(aes(color = treatment_type)) +
-                  facet_wrap(~treatment_type))
-
-hline_light <- data.frame(z = c(3.8997, 10.044), treatment_type = factor(c("control", "treatment")))
-
-(lightsat_plot <- light_plot + 
-                    geom_hline(data = hline_light, aes(yintercept = z)))
-
-# control intersection point
-c1_l <- c(500, 3.13)
-c2_l <- c(1000, 4.33333333)
-control_y_l <- c(500, 3.8997)
-control_y2_l <- c(1000, 3.8997)
-
-line.line.intersection(c1_l, c2_l, control_y_l, control_y2_l, 
-                       interior.only = FALSE)               # x = 819.82 µE m^-2 s^-1
-
-# treatment intersection point
-t1_l <- c(200, 7.98)
-t2_l <- c(500, 11.16)
-treatment_y_l <- c(200, 10.044)
-treatment_y2_l <- c(500, 10.044)
-
-line.line.intersection(t1_l, t2_l, treatment_y_l, treatment_y2_l, 
-                       interior.only = FALSE)               # x = 394.72 µE m^-2 s^-1
-
-## Determining the intersection points for LCP
-# visualizing the light compensation point  
-(lightcomp_plot <- light_plot + 
-                      geom_hline(yintercept = 0))
-
-# control intersection point
-c1_lc <- c(50, -0.72666667)
-c2_lc <- c(100, 0.25)
-control_y_lc <- c(50, 0)
-control_y2_lc <- c(200, 0)
-
-line.line.intersection(c1_lc, c2_lc, control_y_lc, control_y2_lc, 
-                       interior.only = FALSE)               # x = 87.20 µE m^-2 s^-1
-
-# treatment intersection point
-t1_lc <- c(25, -0.04333333)
-t2_lc <- c(50, 2.26000000)
-treatment_y_lc <- c(20, 0)
-treatment_y2_lc <- c(50, 0)
-
-line.line.intersection(t1_lc, t2_lc, treatment_y_lc, treatment_y2_lc, 
-                       interior.only = FALSE)               # x = 25.47 µE m^-2 s^-1
+light <- light %>% 
+  mutate(sample_nr = case_when(sample == "C1" ~ "1",
+                               sample == "C2" ~ "2",
+                               sample == "C3" ~ "3",
+                               sample == "T1" ~ "1",
+                               sample == "T2" ~ "2",
+                               sample == "T3" ~ "3")) %>% 
+  mutate(sample = as.factor(sample)) %>% 
+  mutate(treatment_type = case_when(treatment_type == "control" ~ "Control",
+                                    treatment_type == "treatment" ~ "Treatment"))
 
 
-### Light Response Curve LSP Statistics ----
-light_sum <- light %>% 
-                group_by(sample) %>% 
-                summarize(maxNP = max(NP_SA)) %>% 
-                mutate(LSPx90 = 0.9*maxNP)
+# creating multiple photosynthetic light response (A-Q) curves 
+fit_AQ_curve <- function(df, group_id, Photo, PARi, fit_type = "onls"){
+  AQ_curve_fits <- data.frame(ID = character(),
+                              Asat = numeric(),
+                              Phi = numeric(),
+                              Rd = numeric(),
+                              theta = numeric(),
+                              resid_SSs = numeric(),
+                              LCP = numeric(),
+                              Q_sat_75 = numeric(),
+                              Q_sat_85 = numeric(),  
+                              stringsAsFactors = FALSE
+  )
+  if(fit_type == "onls"){
+    if(require("onls")){
+      print("onls is loaded correctly")
+    } else {
+      print("trying to install onls")
+      install.packages("onls")
+      if(require("onls")){
+        print("onls installed and loaded")
+      } else {
+        stop("could not install onls")
+      }
+    }
+    library("onls")      
+    for(i in seq_along(unique(df[[group_id]]))){
+      tryCatch({
+        AQ_curve_fits[i, 1] <- unique(df[[group_id]])[i]
+        # Subset by group_ID iteratively:
+        single_curve1 <- df[df[[group_id]] == unique(df[[group_id]])[i],]
+        single_curve1$assim <- single_curve1[[Photo]]
+        single_curve1$PAR <- single_curve1[[PARi]]
+        single_curve = single_curve1[order(single_curve1$PAR),]
+        phi.as.slope <- with(single_curve,
+                             as.numeric(coef(lm(
+                               assim[1:5] ~ PAR[1:5]))[2]))
+        # Fit the curve:
+        temp.fit <- with(single_curve, # use the subset of a single curve
+                         onls(assim ~ ((Phi * PAR + Asat - 
+                                          sqrt((Phi * PAR + Asat)^2 - 
+                                                 4 * Phi * theta * 
+                                                 Asat * PAR ))
+                         )/(2*theta) - Rd,
+                         start=list(
+                           Asat = (max(assim)),
+                           Phi = phi.as.slope,
+                           Rd = -min(assim),
+                           theta = 0.5),
+                         control = list(maxiter = 50)#,
+                         #algorithm = "port"
+                         )
+        )
+        AQ_curve_fits[i, 2] <- as.numeric(coef(temp.fit)[1]) # asat 
+        AQ_curve_fits[i, 3] <- as.numeric(coef(temp.fit)[2]) # Phi
+        AQ_curve_fits[i, 4] <- as.numeric(coef(temp.fit)[3]) # Rd
+        AQ_curve_fits[i, 5] <- as.numeric(coef(temp.fit)[4]) # theta
+        AQ_curve_fits[i, 6] <- sum(resid(temp.fit)^2)
+        AQ_curve_fits[i, 7] <- (as.numeric(coef(temp.fit)[3]) *(
+          as.numeric(coef(temp.fit)[3]) * as.numeric(coef(temp.fit)[4]) - 
+            as.numeric(coef(temp.fit)[1]))
+        ) / (as.numeric(coef(temp.fit)[2]) * (
+          as.numeric(coef(temp.fit)[3]) - as.numeric(coef(temp.fit)[1])
+        ))
+        AQ_curve_fits[i, 8] <- (
+          (as.numeric(coef(temp.fit)[1]) * 0.75 + 
+             (as.numeric(coef(temp.fit)[3]))) * (
+               as.numeric(coef(temp.fit)[1]) * 0.75 *
+                 as.numeric(coef(temp.fit)[4]) +
+                 as.numeric(coef(temp.fit)[3]) *
+                 as.numeric(coef(temp.fit)[4]) -
+                 as.numeric(coef(temp.fit)[1])
+             )) / (
+               as.numeric(coef(temp.fit)[2])* (
+                 as.numeric(coef(temp.fit)[1]) * 0.75 +
+                   as.numeric(coef(temp.fit)[3]) -
+                   as.numeric(coef(temp.fit)[1])
+               ))
+        
+        AQ_curve_fits[i, 9] <- (
+          (as.numeric(coef(temp.fit)[1]) * 0.85 + 
+             (as.numeric(coef(temp.fit)[3]))) * (
+               as.numeric(coef(temp.fit)[1]) * 0.85 *
+                 as.numeric(coef(temp.fit)[4]) +
+                 as.numeric(coef(temp.fit)[3]) *
+                 as.numeric(coef(temp.fit)[4]) -
+                 as.numeric(coef(temp.fit)[1])
+             )) / (
+               as.numeric(coef(temp.fit)[2])* (
+                 as.numeric(coef(temp.fit)[1]) * 0.85 +
+                   as.numeric(coef(temp.fit)[3]) -
+                   as.numeric(coef(temp.fit)[1])
+               ))
+      }, error = function(E){cat("Error: ", conditionMessage(E), "\n")})
+    }
+    return(AQ_curve_fits)
+  } else{
+    if(fit_type == "nls"){
+      for(i in seq_along(unique(df[[group_id]]))){
+        tryCatch({
+          AQ_curve_fits[i, 1] <- unique(df[[group_id]])[i]
+          # Subset by group_ID iteratively:
+          single_curve1 <- df[df[[group_id]] == unique(df[[group_id]])[i],]
+          single_curve1$assim <- single_curve1[[Photo]]
+          single_curve1$PAR <- single_curve1[[PARi]]
+          single_curve = single_curve1[order(single_curve1$PAR),]
+          phi.as.slope <- with(single_curve,
+                               as.numeric(coef(lm(
+                                 assim[1:5] ~ PAR[1:5]))[2]))
+          # Fit the curve:
+          temp.fit <- with(single_curve, 
+                           nls(assim ~ ((Phi * PAR + Asat - 
+                                           sqrt((Phi * PAR + Asat)^2 - 
+                                                  4 * Phi * theta * 
+                                                  Asat * PAR ))
+                           )/(2*theta) - Rd,
+                           start=list(
+                             Asat = (max(assim)),
+                             Phi = phi.as.slope,
+                             Rd = -min(assim),
+                             theta = 0.5),
+                           control = list(maxiter = 50),
+                           algorithm = "port")
+          )
+          AQ_curve_fits[i, 2] <- as.numeric(coef(temp.fit)[1]) # asat 
+          AQ_curve_fits[i, 3] <- as.numeric(coef(temp.fit)[2]) # Phi
+          AQ_curve_fits[i, 4] <- as.numeric(coef(temp.fit)[3]) # Rd
+          AQ_curve_fits[i, 5] <- as.numeric(coef(temp.fit)[4]) # theta
+          AQ_curve_fits[i, 6] <- sum(resid(temp.fit)^2)
+          AQ_curve_fits[i, 7] <- (as.numeric(coef(temp.fit)[3]) *(
+            as.numeric(coef(temp.fit)[3]) * 
+              as.numeric(coef(temp.fit)[4]) - 
+              as.numeric(coef(temp.fit)[1]))
+          ) / (as.numeric(coef(temp.fit)[2]) * (
+            as.numeric(coef(temp.fit)[3]) - 
+              as.numeric(coef(temp.fit)[1])
+          ))
+          AQ_curve_fits[i, 8] <- (
+            (as.numeric(coef(temp.fit)[1]) * 0.75 + 
+               (as.numeric(coef(temp.fit)[3]))) * (
+                 as.numeric(coef(temp.fit)[1]) * 0.75 *
+                   as.numeric(coef(temp.fit)[4]) +
+                   as.numeric(coef(temp.fit)[3]) *
+                   as.numeric(coef(temp.fit)[4]) -
+                   as.numeric(coef(temp.fit)[1])
+               )) / (
+                 as.numeric(coef(temp.fit)[2])* (
+                   as.numeric(coef(temp.fit)[1]) * 0.75 +
+                     as.numeric(coef(temp.fit)[3]) -
+                     as.numeric(coef(temp.fit)[1])
+                 ))
+          AQ_curve_fits[i, 9] <- (
+            (as.numeric(coef(temp.fit)[1]) * 0.85 + 
+               (as.numeric(coef(temp.fit)[3]))) * (
+                 as.numeric(coef(temp.fit)[1]) * 0.85 *
+                   as.numeric(coef(temp.fit)[4]) +
+                   as.numeric(coef(temp.fit)[3]) *
+                   as.numeric(coef(temp.fit)[4]) -
+                   as.numeric(coef(temp.fit)[1])
+               )) / (
+                 as.numeric(coef(temp.fit)[2])* (
+                   as.numeric(coef(temp.fit)[1]) * 0.85 +
+                     as.numeric(coef(temp.fit)[3]) -
+                     as.numeric(coef(temp.fit)[1])
+                 ))
+        }, error = function(E){
+          cat("Error: ", conditionMessage(E), "\n")})
+      }
+      return(AQ_curve_fits)      
+    } else{print("ERROR: 'fit_type' specified incorrectly.")}
+  }
+}
+
+my.fits <- fit_AQ_curve(df = light,
+                        Photo = "NP_SA", PARi = "Lcuv", group_id = "sample", fit_type = "onls")
+
+str(my.fits)
+my.fits <- my.fits %>% 
+  mutate(sample = case_when(ID == "1" ~ "C1",
+                            ID == "2" ~ "C2",
+                            ID == "3" ~ "C3",
+                            ID == "4" ~ "T1",
+                            ID == "5" ~ "T2",
+                            ID == "6" ~ "T3"))
+
+# doing it manually using output from 'my.fits' 
+# C1 
+curve.c1 <- function(PARi){
+  (0.07287260 * PARi + 8.675147 - 
+     sqrt((0.07287260 * PARi + 8.675147)^2 - 4 *
+            0.07287260 * -1.2748040 * PARi *
+            8.675147)
+  ) / (2*-1.2748040) - 2.873080
+}
+
+par.c1 <- data.frame(Lcuv = seq(0,1550, by = 50),
+                     curve = curve.c1(PARi = seq(0,1550, by = 50)),
+                     sample = "C1")
+# C2
+curve.c2 <- function(PARi){
+  (0.08371293 * PARi + 4.422790 - 
+     sqrt((0.08371293 * PARi + 4.422790)^2 - 4 *
+            0.08371293 * -1.3723880 * PARi *
+            4.422790)
+  ) / (2*-1.3723880) - 2.562400
+}
+
+par.c2 <- data.frame(Lcuv = seq(0,1550, by = 50),
+                     curve = curve.c2(PARi = seq(0,1550, by = 50)),
+                     sample = "C2")
+# C3
+curve.c3 <- function(PARi){
+  (0.07674525 * PARi + 13.465161 - 
+     sqrt((0.07674525* PARi + 13.465161)^2 - 4 *
+            0.07674525 * -1.1614485 * PARi *
+            13.465161)
+  ) / (2*-1.1614485) - 3.212828
+}
+
+par.c3 <- data.frame(Lcuv = seq(0,1550, by = 50),
+                     curve = curve.c3(PARi = seq(0,1550, by = 50)),
+                     sample = "C3")
+# T1
+curve.t1 <- function(PARi){
+  (0.11458331 * PARi + 13.982050 - 
+     sqrt((0.11458331 * PARi + 13.982050)^2 - 4 *
+            0.11458331 * 0.7072400 * PARi *
+            13.982050)
+  ) / (2*0.7072400) - 2.823915
+}
+
+par.t1 <- data.frame(Lcuv = seq(0,1550, by = 50),
+                     curve = curve.t1(PARi = seq(0,1550, by = 50)),
+                     sample = "T1")
+# T2
+curve.t2 <- function(PARi){
+  (0.08046531 * PARi + 10.091202 - 
+     sqrt((0.08046531 * PARi + 10.091202)^2 - 4 *
+            0.08046531 * 0.9372664 * PARi *
+            10.091202)
+  ) / (2*0.9372664) - 2.030062
+}
+
+par.t2 <- data.frame(Lcuv = seq(0,1550, by = 50),
+                     curve = curve.t2(PARi = seq(0,1550, by = 50)),
+                     sample = "T2")
+# T3
+curve.t3 <- function(PARi){
+  (0.16754053 * PARi + 18.954037 - 
+     sqrt((0.16754053 * PARi + 18.954037)^2 - 4 *
+            0.16754053 * 0.1385859 * PARi *
+            18.954037)
+  ) / (2*0.1385859) - 3.666333
+}
+
+par.t3 <- data.frame(Lcuv = seq(0,1550, by = 50),
+                     curve = curve.t3(PARi = seq(0,1550, by = 50)), 
+                     sample = "T3")
+
+par.all <- rbind(par.c1, par.c2, par.c3, par.t1, par.t2, par.t3)
+par.all <- par.all %>% 
+              mutate(treatment_type = ifelse(grepl("C", sample), "Control", "Treatment"))
+
+light_sum<- light %>% 
+            group_by(sample) %>% 
+            summarize(maxNP = max(NP_SA)) %>% 
+            mutate(LSPx90 = 0.9*maxNP)
+
+par_sum<- par.all %>% 
+            group_by(sample) %>% 
+            summarize(maxNP = max(curve)) %>% 
+            mutate(LSPx90 = 0.9*maxNP)
+
 
 ## Determining the intersection points for 90% LSP
 # visualizing the 90% light saturation points for all samples
-(light_plot_facet <- ggplot(light, aes(x = Lcuv, y = NP_SA)) +
-                        geom_point(aes(color = treatment_type)) +
-                        geom_line(aes(color = treatment_type)) +
-                        facet_wrap(~sample) +
-                        geom_hline(data = light_sum, aes(yintercept = LSPx90)))
+(light_plot <- ggplot(par.all, aes(x = Lcuv, y = curve)) +
+                  geom_line(aes(color = sample, linetype = treatment_type),
+                            size = 0.8) +
+                  geom_hline(data = light_sum, aes(yintercept = LSPx90, color = sample)) +
+                  facet_wrap(~sample))
 
 # C1 intersection point
-c1_1 <- c(500, 3.13)
-c1_2 <- c(1000, 4.33)
+c1_1 <- c(1000, 4.115659)
+c1_2 <- c(1050, 4.1752662)
 control_y_c1 <- c(500, 3.960)
-control_y2_c1 <- c(1100, 3.960)
+control_y2_c1 <- c(1200, 3.960)
 
 line.line.intersection(c1_1, c1_2, control_y_c1, control_y2_c1, 
-                       interior.only = FALSE)               # x = 845.83 µE m^-2 s^-1
+                       interior.only = FALSE)               # x = 1019.08 µE m^-2 s^-1
 
 # C2 intersection point
 c2_1 <- c(500, 1.15)
