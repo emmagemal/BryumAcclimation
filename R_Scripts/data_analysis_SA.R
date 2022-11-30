@@ -24,16 +24,17 @@ fulldata <- fulldata %>%
               dplyr::select(-c(np_DW, np_Chl)) %>% 
               mutate(treatment_type = as.factor(treatment_type),
                      type = as.factor(type),
-                     sample = as.factor(sample)) 
+                     sample = as.factor(sample)) %>% 
+              mutate(np_SA = abs(np_SA))
 
-# calculating GPand % max rate data 
+# calculating GP and % max rate data 
 fulldata <- fulldata %>% 
                 pivot_wider(names_from = type, values_from = np_SA) %>% 
-                mutate(GP = NP - DR) %>% 
+                mutate(GP = NP + DR) %>% 
                 pivot_longer(cols = c("DR", "NP", "GP"), names_to = "type", 
                              values_to = "np_SA")
 
-avg_data <- fulldata %>% 
+avgdata <- fulldata %>% 
               group_by(temp, treatment_type, type) %>% 
               summarize(avgSA = mean(np_SA),
                         se_SA = std.error(np_SA))
@@ -70,15 +71,16 @@ np_full_treatment <- np_full %>%
 cuedata <- fulldata %>% 
               pivot_wider(names_from = type, values_from = np_SA) %>% 
               group_by(sample, temp, treatment_type) %>% 
-              mutate(CUE = NP/(NP-DR)*100) %>% 
-              dplyr::select(!c(DR, NP)) 
+              mutate(CUE = NP/(GP)*100) %>% 
+              dplyr::select(!c(GP, DR, NP)) 
             
 cue_sum <- cuedata %>% 
               group_by(temp, treatment_type) %>% 
               summarize(avgCUE = mean(CUE),
-                        seCUE = std.error(CUE)) %>% 
-              pivot_wider(names_from = treatment_type, values_from = c(avgCUE, seCUE)) %>% 
-              mutate(CUE_diff = ((avgCUE_treatment-avgCUE_control)/abs(avgCUE_control)*100))
+                        seCUE = std.error(CUE))
+
+ggplot(cue_sum, aes(x = temp, y = avgCUE)) +
+  geom_point(aes(color = treatment_type))
 
 cue_sum2 <- cuedata %>% 
               group_by(treatment_type) %>% 
@@ -86,7 +88,7 @@ cue_sum2 <- cuedata %>%
                         seCUE = std.error(CUE))
 
 # t-test
-t.test(CUE ~ treatment_type, data = cuedata)  # t = -2.9103, df = 52.826, p-value = 0.005275**
+t.test(CUE ~ treatment_type, data = cuedata)  # t = -1.2055, df = 67.17, p-value = 0.2322
 
 # t-test (averages)
 t.test(avgCUE ~ treatment_type, data = cue_sum)  # t = -1.4134, df = 10.088, p-value = 0.1876
@@ -110,38 +112,57 @@ t.test(CUE ~ treatment_type, data = cue10)
 # 15˚C
 cue15 <- cuedata %>% filter(temp == 15)
 t.test(CUE ~ treatment_type, data = cue15)
-  # t = -1.9169, df = 5.5157, p-value = 0.108
+  # t = -1.8075, df = 9.5971, p-value = 0.1021
 
 # 20˚C
 cue20 <- cuedata %>% filter(temp == 20)
 t.test(CUE ~ treatment_type, data = cue20)
-  # t = -2.3523, df = 6.7252, p-value = 0.05237
+  # t = -0.36116, df = 5.9937, p-value = 0.7304
 
 # 25˚C
 cue25 <- cuedata %>% filter(temp == 25)
 t.test(CUE ~ treatment_type, data = cue25)
-  # t = 1.4901, df = 5.1484, p-value = 0.1947
+  # t = 0.038116, df = 9.8632, p-value = 0.9704
 
 # 30˚C
 cue30 <- cuedata %>% filter(temp == 30)
 t.test(CUE ~ treatment_type, data = cue30)
-  # t = -0.90163, df = 3.0154, p-value = 0.4334
+  # t = 1.0786, df = 3.7646, p-value = 0.345
 
 
-### Acclimation Ratios ----
-ratios <- read.csv("Data/Pulse_Experiment/acclimation_ratios.csv")
-str(ratios)
+### Acclimation Ratios & Q10 ----
+## Calculation of AR
+ARratio <- as.data.frame(matrix(ncol = 3, nrow = 12))
+colnames(ARratio) <- c("temp", "type", "ratio")
 
-ratios <- ratios %>% dplyr::select(-Chlt.c, -DWt.c)
+# equation = treatment at T + 5˚C / control at T
+ARratio$ratio <- c((-0.6804083/-0.4568380), (-2.5739912/-0.7737948), (-4.2830330/-1.7684478),   # DR
+                   (-6.4027841/-3.0684388), (-7.9797452/-4.9741951), (-10.5753313/-6.1260173),  # DR
+                   (2.4157606/1.7340523), (4.6715594/1.3318238), (4.5930837/1.7676349),         # NP
+                   (2.7201547/0.8418550), (0.9378886/abs(-0.7544705)), (-2.1095351/-1.9636927)) # NP
+ARratio$temp <- c(3.5, 7.5, 12.5, 17.5, 22.5, 27.5, 3.5, 7.5, 12.5, 17.5, 22.5, 27.5)
+                    # want to represent that it's a range/ calculated across temperatures 
+ARratio$type <- c(rep("DR", times = 6), rep("NP", times = 6))
+ARratio <- ARratio[-1,]  # removing outliers
 
-summary(ratios$SAt.c[ratios$type=="DR"])
-summary(ratios$SAt.c[ratios$type=="NP"])
+# AR 10-20˚C (DR)
+-6.4027841/-1.7684478   # AR treat20/cont10
+    # 3.620567
 
-std.error(ratios$SAt.c[ratios$type=="DR"])
-std.error(ratios$SAt.c[ratios$type=="NP"])
 
-# statistically comparing NP vs. DR
-t.test(SAt.c ~ type, data = ratios)  # t = -2.7934, df = 6.2692, p-value = 0.03001
+# AR statistics 
+summary(ARratio$ratio[ARratio$type == "DR"])
+#  Min.    Median    Mean     Max. 
+# 1.604    2.087    2.233    3.326 
+
+summary(ARratio$ratio[ARratio$type == "NP"])
+#  Min.    Median    Mean     Max. 
+# 1.074    1.996    2.175     3.508 
+
+std.error(ARratio$ratio[ARratio$type == "DR"])   # 0.3086133
+std.error(ARratio$ratio[ARratio$type == "NP"])   # 0.4382548
+
+
 
 
 ### Optimum Temperature (Max NP) Statistics ----
@@ -482,7 +503,6 @@ summary(mixed_sample_np)  # sample explains quite a bit of the residual variance
 
 anova(mixed_sample_np)   # temp: F = 45.23, p = 7.465e-9, DF = 59.78
 # treatment_type: F = 9.59, p = 0.0095, DF = 11.739
-
 
 ### DR Statistics ----
 ## Checking data assumptions  

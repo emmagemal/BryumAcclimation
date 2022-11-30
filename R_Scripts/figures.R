@@ -10,6 +10,7 @@ library(ggpubr)
 library(plotrix)  # for std.error()
 library(gridExtra)
 library(patchwork)
+library(DescTools)  # ColToGrey
 library(ggh4x)  # for changing facet_grid sizes in ggplot 
 library(ggnewscale)  # for editing ggplot2 legend scales (creating groups) 
 library(grid)  # for textGrob
@@ -21,15 +22,13 @@ fulldata <- read.csv("Data/Pulse_Experiment/raw_np_dr_data.csv", header = TRUE)
 
 avgdata <- avgdata %>% 
               mutate(treatment_type = as.factor(treatment_type),
-                     type = as.factor(type)) %>% 
-              rename(avg_rateSA = avgSA)
+                     type = as.factor(type))
 str(avgdata)
 
 fulldata <- fulldata %>% 
               mutate(treatment_type = as.factor(treatment_type),
                      type = as.factor(type),
-                     sample = as.factor(sample)) %>% 
-              mutate(se_xmin = fun.xmin())
+                     sample = as.factor(sample))
 
 # calculating GP
 fulldata_wide <- fulldata %>% 
@@ -38,80 +37,42 @@ fulldata_wide <- fulldata %>%
                   mutate(GP = NP - DR) %>% 
                   dplyr::select(-c(NP, DR)) %>% 
                   group_by(temp, treatment_type) %>% 
-                  summarize(avg_rateSA = mean(GP),
-                            se_SA = std.error(GP),
-                            se_xmin = fun.xmin(GP)) %>% 
+                  summarize(avgSA = mean(GP),
+                            se_SA = std.error(GP)) %>% 
                   mutate(type = "GP")
-
-fun.xmin <- function(y){mean(y-sd(y)/sqrt(length(y)))} 
-fun.xmax <- function(y){mean(y)+sd(y)/sqrt(length(y))}
 
 avgdata <- full_join(avgdata, fulldata_wide)
 
+avgdata <- avgdata %>% 
+              dplyr::select(-c(avgDW, avgChl))
+
 
 ## SA plot 
-(sa_plot <- ggplot(avgdata, aes(x = temp, y = avg_rateSA, 
-                                group = interaction(type, treatment_type), 
-                                color = type, fill = type, linetype = treatment_type)) +
-                geom_hline(yintercept = 0, color = "grey", size = 0.8) +  # optional to keep              
-                geom_point(aes(shape = type), size = 3) +
-                geom_smooth(method = "loess", se = F, span = 1.5) +
-                #    geom_line(aes(linetype = treatment_type)) +
-                geom_errorbar(aes(ymin = temp-se_SA, ymax = temp+se_SA), 
-                              width = 0.5, linetype = "solid", alpha = 0.7) +
-                ylab(label = 
-                       expression(NP~DR~or~GP~(µmol~CO[2]~m^-2~s^-1))) +
-                xlab(label = "Temperature (˚C)") +              
-                theme_bw() +
-                theme(axis.title.x = 
-                        element_text(margin = margin(t = 10, r = 0, b = 0, l = 0)),
-                      axis.title.y = 
-                        element_text(margin = margin(t = 0, r = 7, b = 0, l = 0)), 
-                      panel.grid = element_blank(),
-                      legend.key.width = unit(1,"cm")) +
-                theme(plot.margin = unit(c(1, 1, 1, 1), "cm")) + 
-                scale_color_manual(values = c("#EA7A0B", "#395493", "#3EACDC"),
-                                   name = "Process",
-                                   labels = c("DR", "GP", "NP")) +
-                scale_fill_manual(values = c("#EA7A0B", "#395493", "#3EACDC"),
-                                  name = "Process",
-                                  labels = c("DR", "GP", "NP")) +
-                scale_shape_manual(name = "Process",
-                                   values = c(21, 22, 24),
-                                   labels = c("DR", "GP", "NP")) +
-                scale_linetype(name = "Treatment Type",
-                                      labels = c("Control","Treatment"),
-                                      guide = guide_legend(override.aes = list(color = "grey5"))) +
-                scale_y_continuous(breaks = seq(-20, 10, 5)) +
-                scale_x_continuous(n.breaks = 6))
-
-ggsave("Figures/t_response_sa.png", plot = sa_plot, 
-       width = 6.2, height = 5, units = "in")
-
-
-## SA plot with different fills of the shapes (solid vs. hollow)
-(sa_plot2 <- ggplot(avgdata, aes(x = temp, y = avg_rateSA, 
-                                 group = interaction(type, treatment_type))) +
-                geom_hline(yintercept = 0, color = "grey", size = 0.8) +  # optional to keep              
+(sa_plot <- ggplot(avgdata, aes(x = temp, y = avgSA, 
+                                group = interaction(type, treatment_type))) +
+                geom_hline(yintercept = 0, size = 1, color = "grey80") +
                 geom_point(data = subset(avgdata, treatment_type == "control"), 
-                                         aes(shape = type, color = type, fill = type), 
-                           size = 2) +
+                                         aes(shape = type, color = type, fill = type), size = 2) +
                 geom_smooth(data = subset(avgdata, treatment_type == "control"), 
                             method = "loess", se = F, span = 1.5,
                             aes(linetype = type, color = type)) +
             #    geom_line(aes(linetype = treatment_type)) +
-                geom_errorbar(aes(ymin = avg_rateSA-se_SA, ymax = avg_rateSA+se_SA,
+                geom_errorbar(aes(ymin = avgSA-se_SA, ymax = avgSA+se_SA,
                                   color = type), 
                               width = 0.5, linetype = "solid", alpha = 0.7) +
-                ylab(label = expression("NP,"~DR~or~GP~(µmol~CO[2]~m^-2~s^-1))) +
-                xlab(label = "Temperature (˚C)") +              
+                ylab(label = expression("DR, NP or GP"~(µmol~CO[2]~m^-2~s^-1))) +
+                xlab(label = "Temperature (˚C)") +  
+                annotate("text", label = "    Respiration                Assimilation",
+                         x = -4, y = -1, angle = 90, size = 3) +
+                coord_cartesian(clip = "off", xlim = c(2, 30), ylim = c(-12, 11)) +
                 theme_bw() +
                 theme(axis.title.x = 
                         element_text(margin = margin(t = 10, r = 0, b = 0, l = 0)),
                       axis.title.y = 
-                        element_text(margin = margin(t = 0, r = 7, b = 0, l = 0)), 
+                        element_text(margin = margin(t = 0, r = 17, b = 0, l = 0)), 
                       panel.grid = element_blank(),
-                      legend.key.width = unit(1,"cm")) +
+                      legend.key.width = unit(1,"cm"),
+                      panel.border = element_rect(size = 0.3)) +
                 theme(plot.margin = unit(c(0.5, 0.5, 0.5, 1), "cm")) + 
                 scale_y_continuous(breaks = seq(-20, 10, 5)) +
                 scale_x_continuous(n.breaks = 6) +
@@ -151,39 +112,8 @@ ggsave("Figures/t_response_sa.png", plot = sa_plot,
                                       values = c("22", "22", "22"),
                                       labels = c("DR", "GP", "NP"),
                                       guide = guide_legend(order = 2)))
-
-###
-# old scales... 
-                scale_color_manual(values = c("#EA7A0B", "#EA7A0B", "#395493", 
-                                              "#395493", "#3EACDC", "#3EACDC"),
-                                   name = "Process & Treatment",
-                                   labels = c("DR Control", "DR Treatment", 
-                                              "GP Control", "GP Treatment",
-                                              "NP Control", "NP Treatment")) +
-                scale_fill_manual(values = c("#EA7A0B", "#EA7A0B", "#395493", 
-                                             "#395493", "#3EACDC", "#3EACDC"),
-                                  name = "Process & Treatment",
-                                  labels = c("DR Control", "DR Treatment", 
-                                             "GP Control", "GP Treatment",
-                                             "NP Control", "NP Treatment")) +
-                scale_shape_manual(name = "Process & Treatment",
-                                   values = c(1, 21, 0, 22, 2, 24),
-                                 #  values = c(21, 1, 22, 0, 24, 2),
-                                   labels = c("DR Control", "DR Treatment", 
-                                              "GP Control", "GP Treatment",
-                                              "NP Control", "NP Treatment")) +
-                scale_linetype_manual(name = "Process & Treatment",
-                                      labels = c("DR Control", "DR Treatment", 
-                                                 "GP Control", "GP Treatment",
-                                                 "NP Control", "NP Treatment"),
-                                      values = c("solid", "22", "solid", "22",
-                                                 "solid", "22")) +
-                scale_y_continuous(breaks = seq(-20, 10, 5)) +
-                scale_x_continuous(n.breaks = 6)
-###
-                
-                
-ggsave("Figures/t_response_sa2.png", plot = sa_plot2, 
+             
+ggsave("Figures/t_response_sa.png", plot = sa_plot, 
        width = 6, height = 5, units = "in")
 
 
@@ -243,19 +173,23 @@ str(ratios)
 ggsave("Figures/SAacclim_ratio_plot.png", plot = SAratio_plot, 
        width = 6.5, height = 5, units = "in")
 
-# with new calculations
-ratios_DR <- data.frame(AR = c(1.39313018, 3.507640695, 2.598434548, 
-                                  3.231143824, 1.24310841, 1.074269458,
-                               3.326452023, 2.421916572, 2.086658543, 
-                                  1.604228434, 1.726297981),
-                        type = c("NP", "NP", "NP", "NP", "NP", "NP", 
-                                 "DR", "DR", "DR", "DR", "DR"),
-                        temp = c(5, 10, 15, 20, 25, 30, 10, 15, 20, 25, 30))
+## with new calculations of AR (at growth temp)
+# calculation of AR
+ARratio <- as.data.frame(matrix(ncol = 3, nrow = 12))
+colnames(ARratio) <- c("temp", "type", "ratio")
 
-(SAratio_plot2 <- ggplot(ratios_DR, aes(x = temp, y = AR)) +
+                  # treatment/control
+ARratio$ratio <- c((-0.6804083/-0.4568380), (-2.5739912/-0.7737948), (-4.2830330/-1.7684478), # DR
+                   (-6.4027841/-3.0684388), (-7.9797452/-4.9741951), (-10.5753313/-6.1260173), # DR
+                   (2.4157606/1.7340523), (4.6715594/1.3318238), (4.5930837/1.7676349), # NP
+                   (2.7201547/0.8418550), (0.9378886/abs(-0.7544705)), (-2.1095351/-1.9636927)) # NP
+ARratio$temp <- rep(seq(from = 5, to = 30, by = 5), times = 2)
+ARratio$type <- c(rep("DR", times = 6), rep("NP", times = 6))
+ARratio <- ARratio[-1, ]  # removing outlier 
+
+(SAratio_plot2 <- ggplot(ARratio, aes(x = temp, y = ratio)) +
                     geom_point(aes(color = type, shape = type), 
                                size = 2.5, alpha = 0.9) +
-                    geom_hline(yintercept = 1, linetype = "dotted", color = "grey30") +
                     ylab(label = "Acclimation ratio") +
                     xlab(label = "Temperature (˚C)") +
                     theme_bw() +
@@ -265,8 +199,8 @@ ratios_DR <- data.frame(AR = c(1.39313018, 3.507640695, 2.598434548,
                             element_text(margin = margin(t = 0, r = 10, b = 0, l = 0)),
                           panel.grid = element_blank()) +
                     theme(plot.margin = unit(c(0.5, 0.5, 0.5, 1), "cm")) +
-                    scale_y_continuous(limits = c(0, 4)) +
-                    scale_x_continuous(n.breaks = 6) +
+                    scale_y_continuous(limits = c(1, 4)) +
+                    scale_x_continuous(n.breaks = 4) +
                     scale_color_manual(values = c("#EA7A0B", "#3EACDC"),
                                        name = "Process") +
                     scale_shape_manual(name = "Process",
@@ -947,7 +881,7 @@ microlog.vp <- microlog.vp %>%
             scale_x_datetime(date_labels = "%d/%m/%y") +
             scale_color_manual(name = "Logger Location",
                                label = c("Inside", "Outside", "Difference"),
-                               values = c("#395493", "#DA4D10", "#7E9627")))
+                               values = c("#DA4D10", "#395493", "#F4B076")))
 
 # plotting relative humidity 
 (rh <- ggplot(microlog.rh, aes(x = date_time, y = humidity)) +
@@ -965,7 +899,7 @@ microlog.vp <- microlog.vp %>%
           scale_x_datetime(date_labels = "%d/%m/%y") +
           scale_color_manual(name = "Logger Location",
                              label = c("Inside", "Outside"),
-                             values = c("#395493", "#DA4D10")))
+                             values = c("#DA4D10", "#395493")))
 
 # plotting vapor pressure 
 (vp <- ggplot(microlog.vp, aes(x = date_time, y = vapor)) +
@@ -990,7 +924,7 @@ microlog.vp <- microlog.vp %>%
                                 values = c("solid", "11")) +
           scale_color_manual(name = "",
                              label = c("Inside", "Outside"),
-                             values = c("#395493", "#DA4D10")) +
+                             values = c("#DA4D10", "#395493")) +
           guides(color = "none"))
 
 # another version of VP (legend on right)
@@ -1016,7 +950,7 @@ microlog.vp <- microlog.vp %>%
                                 values = c("solid", "11")) +
           scale_color_manual(name = "",
                              label = c("Inside", "Outside"),
-                             values = c("#395493", "#DA4D10")) +
+                             values = c("#DA4D10", "#395493")) +
           guides(color = "none"))
 
 # another version of VP (facet horizontal)
@@ -1042,7 +976,7 @@ microlog.vp <- microlog.vp %>%
                                 values = c("solid", "11")) +
           scale_color_manual(name = "",
                              label = c("Inside", "Outside"),
-                             values = c("#395493", "#DA4D10")) +
+                             values = c("#DA4D10", "#395493")) +
           guides(color = "none"))
 
 ### OTC Absorbance Spectra ----
@@ -1110,20 +1044,15 @@ ggsave("Figures/water_content.png", plot = water_curves, width = 9, height = 6, 
 
 ### Main Panel (control vs. treatment, acclimation ratios, light curves) ----
 panel.all <- ggarrange(light_curves,
-                       ggarrange(sa_plot2, SAratio_plot, nrow = 2, labels = c("b", "c"),
-                                 heights = c(1, 0.85),
+                       ggarrange(sa_plot, 
+                                 ggarrange(SAratio_plot2, NULL, ncol = 2, widths = c(1, 0.03)),
+                                 nrow = 2, labels = c("b", "c"),
+                                 heights = c(1, 0.75),
                                  font.label = list(size = 20, face = "bold")),
                        ncol = 2, labels = "a", widths = c(0.75, 1),
-                       font.label = list(size = 20, face = "bold"))
-panel.all
-ggsave("Figures/pulse_results_panel.png", panel.all, width = 8, height = 6, units = "in")
-
-# combined without light curves
-panel2 <- ggarrange(sa_plot2, SAratio_plot2, ncol = 2, labels = c("a", "b"),
-                    font.label = list(size = 20, face = "bold"), widths = c(1.3, 1))
-panel2
-ggsave("Figures/pulse_results_panel2.png", panel2, width = 8, height = 4, units = "in")
-
+                       font.label = list(size = 20, face = "bold")) 
+(panel.all <- panel.all + bgcolor("#ffffff"))
+ggsave("Figures/pulse_results_panel.png", panel.all, width = 8.2, height = 6, units = "in")
 
 # with light curves at top instead
 panel.all.top <- ggarrange(light_curves2,
@@ -1131,7 +1060,7 @@ panel.all.top <- ggarrange(light_curves2,
                                      font.label = list(size = 20, face = "bold"), 
                                      widths = c(1, 0.9)),
                            nrow = 2, heights = c(0.9, 1), labels = "a",
-                           font.label = list(size = 20, face = "bold"))
+                           font.label = list(size = 20, face = "bold")) 
 panel.all.top
 ggsave("Figures/pulse_results_panel3.png", panel.all.top, width = 9, height = 7, units = "in")
 
@@ -1175,7 +1104,7 @@ panel_otc2 <- ggarrange(nrow = 2,
                                  labels = c("a", "b"), ncol = 2, 
                                  widths = c(1, 1), 
                                  font.label = list(size = 20, face = "bold")),
-                       ggarrange(vp2, oct2,
+                       ggarrange(vp2, otc2,
                                  labels = c("c", "d"), 
                                  widths = c(1, 0.8), ncol = 2,
                                  font.label = list(size = 20, face = "bold")))
@@ -1185,14 +1114,14 @@ ggsave("Figures/otc_panel2.png", plot = panel_otc2, width = 6.5, height = 6.5, u
 
 # with horizontal vp 
 panel_otc3 <- ggarrange(nrow = 2,
-                       ggarrange(NULL, temp, rh, NULL,
+                       ggarrange(NULL, temp, NULL, rh, NULL,
                                  common.legend = T, legend = "top",
-                                 labels = c("", "a", "b", ""), ncol = 4, 
-                                 widths = c(0.1, 1, 1, 0.1), 
+                                 labels = c("", "a", "b", ""), ncol = 5, 
+                                 widths = c(0.1, 1, 0.1, 1, 0.1), 
                                  font.label = list(size = 20, face = "bold")),
                        ggarrange(vp3, otc,
                                  labels = c("c", "d"), 
                                  widths = c(1, 0.75), ncol = 2,
                                  font.label = list(size = 20, face = "bold")))
-panel_otc3
+(panel_otc3 <- panel_otc3 + bgcolor("#ffffff"))
 ggsave("Figures/otc_panel3.png", plot = panel_otc3, width = 6.5, height = 6.5, units = "in")
