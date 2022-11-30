@@ -178,18 +178,20 @@ ggsave("Figures/SAacclim_ratio_plot.png", plot = SAratio_plot,
 ARratio <- as.data.frame(matrix(ncol = 3, nrow = 12))
 colnames(ARratio) <- c("temp", "type", "ratio")
 
-                  # treatment/control
+# treatment/control
 ARratio$ratio <- c((-0.6804083/-0.4568380), (-2.5739912/-0.7737948), (-4.2830330/-1.7684478), # DR
                    (-6.4027841/-3.0684388), (-7.9797452/-4.9741951), (-10.5753313/-6.1260173), # DR
                    (2.4157606/1.7340523), (4.6715594/1.3318238), (4.5930837/1.7676349), # NP
                    (2.7201547/0.8418550), (0.9378886/abs(-0.7544705)), (-2.1095351/-1.9636927)) # NP
-ARratio$temp <- rep(seq(from = 5, to = 30, by = 5), times = 2)
+ARratio$temp <- c(3.5, 7.5, 12.5, 17.5, 22.5, 27.5, 3.5, 7.5, 12.5, 17.5, 22.5, 27.5)
 ARratio$type <- c(rep("DR", times = 6), rep("NP", times = 6))
-ARratio <- ARratio[-1, ]  # removing outlier 
+ARratio <- ARratio[-1,]  # removing outliers
+
 
 (SAratio_plot2 <- ggplot(ARratio, aes(x = temp, y = ratio)) +
                     geom_point(aes(color = type, shape = type), 
                                size = 2.5, alpha = 0.9) +
+                    geom_hline(yintercept = 1, linetype = "dotted", color = "grey30") +
                     ylab(label = "Acclimation ratio") +
                     xlab(label = "Temperature (˚C)") +
                     theme_bw() +
@@ -199,8 +201,8 @@ ARratio <- ARratio[-1, ]  # removing outlier
                             element_text(margin = margin(t = 0, r = 10, b = 0, l = 0)),
                           panel.grid = element_blank()) +
                     theme(plot.margin = unit(c(0.5, 0.5, 0.5, 1), "cm")) +
-                    scale_y_continuous(limits = c(1, 4)) +
-                    scale_x_continuous(n.breaks = 4) +
+                    scale_x_continuous(limits = c(2, 30)) +
+                    scale_y_continuous(limits = c(0.9, 4)) +
                     scale_color_manual(values = c("#EA7A0B", "#3EACDC"),
                                        name = "Process") +
                     scale_shape_manual(name = "Process",
@@ -1047,7 +1049,7 @@ panel.all <- ggarrange(light_curves,
                        ggarrange(sa_plot, 
                                  ggarrange(SAratio_plot2, NULL, ncol = 2, widths = c(1, 0.03)),
                                  nrow = 2, labels = c("b", "c"),
-                                 heights = c(1, 0.75),
+                                 heights = c(1, 0.78),
                                  font.label = list(size = 20, face = "bold")),
                        ncol = 2, labels = "a", widths = c(0.75, 1),
                        font.label = list(size = 20, face = "bold")) 
