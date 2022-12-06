@@ -60,7 +60,8 @@ avgdata <- avgdata %>%
                 geom_errorbar(aes(ymin = avgSA-se_SA, ymax = avgSA+se_SA,
                                   color = type), 
                               width = 0.5, linetype = "solid", alpha = 0.7) +
-                ylab(label = expression("DR, NP or GP"~(µmol~CO[2]~m^-2~s^-1))) +
+                ylab(label = expression(paste(
+                  "DR, NP or GP µmol ", "CO"[2], " m"^"−2", " s"^"−1", ")"))) + 
                 xlab(label = "Temperature (˚C)") +  
                 annotate("text", label = "    Respiration                Assimilation",
                          x = -4, y = -1, angle = 90, size = 3) +
@@ -113,67 +114,11 @@ avgdata <- avgdata %>%
                                       labels = c("DR", "GP", "NP"),
                                       guide = guide_legend(order = 2)))
              
-ggsave("Figures/t_response_sa.png", plot = sa_plot, 
-       width = 6, height = 5, units = "in")
-
-
-### Carbon Gain Efficiency ----  (not sure we need this) ----
-cgain <- read.csv("Data/Pulse_Experiment/c_gainSA.csv") 
-str(cgain)
-
-# making stacked plots of DR:NP 
-(stacked_SA <- ggplot(cgain, aes(x = temp, y = percent, fill = type)) +
-                  geom_bar(position = "fill", stat = "identity") +
-                  ylab(label = "Carbon Use Efficiency (%)") +
-                  xlab(label = "Temperature (˚C)") +              
-                  facet_wrap(~treatment_type, nrow = 1) +
-                  theme_bw() +
-                  theme(axis.title.x = 
-                          element_text(margin = margin(t = 10, r = 0, b = 0, l = 0)),
-                        axis.title.y = 
-                          element_text(margin = margin(t = 0, r = 5, b = 0, l = 0))) +
-                  theme(plot.margin = unit(c(1, 1, 1, 1), "cm"),
-                        panel.spacing = unit(1, "cm")) + 
-                  scale_fill_manual(values = c("#FF6D33", "#7A292A"),
-                                    name = "Process") +  # could change the name 
-                  scale_y_continuous(expand = expansion(mult = c(0, 0.01)),
-                                     labels = scales::percent_format(suffix = "")))  # OR
-              #    scale_y_continuous(expand = c(0,0)))
-
-ggsave("Figures/c_gain_SA.png", plot = stacked_SA, 
-       width = 7.5, height = 5, units = "in")
+#ggsave("Figures/t_response_sa.png", plot = sa_plot, 
+#       width = 6, height = 5, units = "in")
 
 
 ### Acclimation Ratios ----
-ratios <- read.csv("Data/Pulse_Experiment/acclimation_ratios.csv")
-str(ratios)
-
-(SAratio_plot <- ggplot(ratios, aes(x = temp, y = SAt.c)) +
-                    geom_point(aes(color = type, fill = type, shape = type), 
-                               size = 2.5, alpha = 0.9) +
-                    geom_hline(yintercept = 1, linetype = "dotted", color = "grey30") +
-                    ylab(label = "Acclimation ratio") +
-                    xlab(label = "Temperature (˚C)") +
-                    theme_bw() +
-                    theme(axis.title.x = 
-                            element_text(margin = margin(t = 10, r = 0, b = 0, l = 0)),
-                          axis.title.y = 
-                            element_text(margin = margin(t = 0, r = 10, b = 0, l = 0)),
-                          panel.grid = element_blank()) +
-                    theme(plot.margin = unit(c(0.5, 0.7, 0.5, 1), "cm")) +
-                    scale_color_manual(values = c("#EA7A0B", "#3EACDC"),
-                                       name = "Process  ") +
-                    scale_fill_manual(values = c("#EA7A0B", "#3EACDC"),
-                                      name = "Process  ") +
-                    scale_shape_manual(name = "Process  ",
-                                       values = c(21, 24)) + # can change the name
-                    scale_y_continuous(limits = c(0, 6)) +
-                    scale_x_continuous(n.breaks = 6))
-
-ggsave("Figures/SAacclim_ratio_plot.png", plot = SAratio_plot, 
-       width = 6.5, height = 5, units = "in")
-
-## with new calculations of AR (at growth temp)
 # calculation of AR
 ARratio <- as.data.frame(matrix(ncol = 3, nrow = 12))
 colnames(ARratio) <- c("temp", "type", "ratio")
@@ -188,7 +133,7 @@ ARratio$type <- c(rep("DR", times = 6), rep("NP", times = 6))
 ARratio <- ARratio[-1,]  # removing outliers
 
 
-(SAratio_plot2 <- ggplot(ARratio, aes(x = temp, y = ratio)) +
+(SAratio_plot <- ggplot(ARratio, aes(x = temp, y = ratio)) +
                     geom_point(aes(color = type, shape = type), 
                                size = 2.5, alpha = 0.9) +
                     geom_hline(yintercept = 1, linetype = "dotted", color = "grey30") +
@@ -213,15 +158,15 @@ ARratio <- ARratio[-1,]  # removing outliers
 light <- read.csv("Data/Pulse_Experiment/lightresponses_revised.csv") 
 str(light)
 light <- light %>% 
-          mutate(sample_nr = case_when(sample == "C1" ~ "1",
-                                       sample == "C2" ~ "2",
-                                       sample == "C3" ~ "3",
-                                       sample == "T1" ~ "1",
-                                       sample == "T2" ~ "2",
-                                       sample == "T3" ~ "3")) %>% 
-          mutate(sample = as.factor(sample)) %>% 
-          mutate(treatment_type = case_when(treatment_type == "control" ~ "Control",
-                                            treatment_type == "treatment" ~ "Treatment"))
+            mutate(sample_nr = case_when(sample == "C1" ~ "1",
+                                         sample == "C2" ~ "2",
+                                         sample == "C3" ~ "3",
+                                         sample == "T1" ~ "1",
+                                         sample == "T2" ~ "2",
+                                         sample == "T3" ~ "3")) %>% 
+            mutate(sample = as.factor(sample)) %>% 
+            mutate(treatment_type = case_when(treatment_type == "control" ~ "Control",
+                                              treatment_type == "treatment" ~ "Treatment"))
 
 # creating multiple photosynthetic light response (A-Q) curves 
 fit_AQ_curve <- function(df, group_id, Photo, PARi, fit_type = "onls"){
@@ -524,8 +469,8 @@ par.all <- par.all %>%
                                        values = c(1, 21)) +
                     scale_y_continuous(limits = c(-5, 16)))
 
-ggsave("Figures/light_response_curves.png", plot = light_curves, 
-       height = 7, width = 4.5, units = "in")
+#ggsave("Figures/light_response_curves.png", plot = light_curves, 
+#       height = 7, width = 4.5, units = "in")
 
 # horizontal plot 
 (light_curves2 <- ggplot(par.all, aes(x = Lcuv, y = curve, group = sample)) +
@@ -563,49 +508,6 @@ ggsave("Figures/light_response_curves.png", plot = light_curves,
                     scale_y_continuous(limits = c(-5, 16)))
 
 
-# plot using base R (not needed anymore)
-diagnostic_AQ_plot <- function(curve_data, fit_data, Photo, PARi, group_id){
-    for(i in seq_along(1:length(unique(curve_data[[group_id]])))){
-      plot(
-        curve_data[[Photo]] ~ curve_data[[PARi]] ,
-        xlim = c(-2, max(curve_data[[PARi]])), 
-        ylim = c(min(curve_data[[Photo]]) - 2,
-                 max(curve_data[[Photo]]) + 2),
-        xlab = "",
-        ylab = ""
-      )
-      mtext(expression("NP (µmol "*CO[2]*" "*m^-2*" "*s^-1*")"),
-            line = 2.4, side = 2)
-      mtext(expression("Lcuv (µmol photons "*m^-2*" "*s^-1*")"),
-            line = 2.4, side = 1)
-      curve(((
-        fit_data$Phi[i] * PARi + fit_data$Asat[i] - 
-          sqrt((fit_data$Phi[i] * PARi + fit_data$Asat[i])^2 - 4 *
-                 fit_data$Phi[i] * fit_data$theta[i] * PARi *
-                 fit_data$Asat[i])
-      ) / (2*fit_data$theta[i]) - fit_data$Rd[i]),
-      from = 0, to = 1550, 
-      xname = "PARi",
-      xlab = "", ylab = "", 
-      xlim = c(-2, max(curve_data[[PARi]])), 
-      ylim = c(min(curve_data[[Photo]]) - 2,
-               max(curve_data[[Photo]]) + 2),
-      lwd = 2,
-      add = TRUE
-      )
-      par(new = TRUE)
-    }
-}
-
-diagnostic_AQ_plot(light, my.fits, Photo = "NP_SA", PARi = "Lcuv", group_id = "sample")
-
-
-
-data_fun <- data.frame(x = light$Lcuv, 
-                       values = diagnostic_AQ_plot(light, my.fits, 
-                                                   Photo = "NP_SA", PARi = "Lcuv", 
-                                                   group_id = "sample"))
-
 # calculating averages, standard deviation and standard error
 light_sum <- light %>% 
                 group_by(Lcuv, treatment_type) %>% 
@@ -614,33 +516,6 @@ light_sum <- light %>%
                           seNP = mean(seNP)) %>% 
                 na.omit()
 
-light_sum2 <- light %>% 
-                group_by(Lcuv, treatment_type) %>% 
-                summarise(avgNP = mean(NP_SA),
-                          sdNP = sd(NP_SA)) %>%    # if I want to SD instead of SE
-                na.omit()
-
-# plotting the mean light response curves 
-(light_plots <- ggplot(light_sum, aes(x = Lcuv, y = avgNP)) +
-                  geom_hline(yintercept = 0, size = 0.5, linetype = "dotted") +               
-                  geom_point(aes(color = treatment_type), size = 2.2) +
-                  geom_line(aes(color = treatment_type)) +
-                  geom_errorbar(aes(ymin = avgNP-seNP, ymax = avgNP+seNP, 
-                                    color = treatment_type, width = 20), alpha = 0.8) + 
-                  ylab(label = expression(Assimilation~per~area~(µmol~m^-2~s^-1))) +  
-                  xlab(label = expression(paste(
-                    "PPFD ", "(µmol ", "m"^-2, " s"^-1, ")"))) +
-                  theme_bw() +
-                  theme(panel.grid = element_blank(),
-                        axis.title.x = 
-                          element_text(margin = margin(t = 10, r = 0, b = 0, l = 0))) +
-                  theme(plot.margin = unit(c(1, 1, 1, 1), "cm")) +
-                  scale_color_manual(values = c("#12A7B8", "#004452"),
-                                     name = "Treatment Type",
-                                     labels = c("Control", "Treatment"))) 
-
-ggsave("Figures/light_response.png", plot = light_plots, 
-       width = 7, height = 5.5, units = "in")
 
 ### Seasonal Changes ----
 ## NP, DR and GP
@@ -671,7 +546,7 @@ season_long <- season_long %>%
                                     color = type), 
                                 width = 1, alpha = 0.7) +
                   ylab(label = expression(paste(
-                    "NP, DR or GP (µmol ", "CO"[2], " m"^-2, " s"^-1, ")"))) +  
+                    "NP, DR or GP (µmol ", "CO"[2], " m"^"−2", " s"^"−1", ")"))) +  
                   xlab(label = "Date") +
                   theme_bw() +
                   theme(axis.title.x = 
@@ -689,8 +564,8 @@ season_long <- season_long %>%
                                      values = c(21, 22, 24)) +
                   scale_x_date(date_labels = "%d/%m/%y"))
 
-ggsave("Figures/season_rates.png", plot = season_plot, 
-       width = 5.5, height = 4.5, units = "in")
+#ggsave("Figures/season_rates.png", plot = season_plot, 
+#       width = 5.5, height = 4.5, units = "in")
 
 
 ## Chlorophyll content
@@ -720,7 +595,7 @@ chl_sum <- chl_season %>%
                       geom_line(color = "#5D5F25", size = 1, ) +
                       geom_errorbar(aes(ymin = chl_mg-chl_mg_se, ymax = chl_mg+chl_mg_se), 
                                     width = 1, color = "#5D5F25", alpha = 0.7) +
-                      ylab(label = expression(Chlorophyll~content~(mg~m^-2))) +  
+                      ylab(label = expression(paste("Chlorophyll content "("mg m"^"−2")))) +  
                       xlab(label = "Date") +
                       theme_bw() +
                       theme(axis.title.x = 
@@ -732,45 +607,8 @@ chl_sum <- chl_season %>%
                       theme(plot.margin = unit(c(0.5, 0.5, 0.5, 0.75), "cm")) +
                       scale_x_date(date_labels = "%d/%m/%y"))
 
-ggsave("Figures/season_chl.png", plot = chl_season_plot, 
-       width = 4.5, height = 4.5, units = "in")
-
-
-# 2 y-axis plot instead of panel (DON'T USE)
-combo <- read.csv("Data/Seasons/season_chl_combo.csv")
-
-str(combo)
-combo <- combo %>% 
-            mutate(date = as.Date(date, format = "%d/%m/%Y")) %>% 
-            na.omit()
-str(combo)
-
-coeff <- 100
-(mixed_plot <- ggplot(combo, aes(x = date)) +
-                  geom_point(aes(y = rate, color = type)) +
-                  geom_line(aes(y = rate, color = type)) +
-                  geom_point(aes(y = chl_mg / coeff), color = "#5D5F25") +
-                  geom_line(aes(y = chl_mg / coeff), color = "#5D5F25") +
-                  xlab(label = "Date") +
-                  theme_bw() +
-                  scale_y_continuous(name = expression(paste(
-                                            "CO"[2], " exchange (µmol ", "m"^-2, " s"^-1, ")")),
-                                     sec.axis = sec_axis(~.*coeff, 
-                                                         name = 
-                                                         expression(paste(
-                                                "Chlorophyll content (mg ", "m"^-2, ")")))) +
-                  theme(axis.title.x = 
-                          element_text(margin = margin(t = 10, r = 0, b = 0, l = 0)),
-                        axis.title.y = 
-                          element_text(margin = margin(t = 0, r = 7, b = 0, l = 0)),
-                        axis.title.y.right = element_text(vjust = 3), 
-                        panel.grid.minor = element_blank()) +
-                  theme(plot.margin = unit(c(1, 1, 1, 1), "cm")) + 
-                  scale_color_manual(values = c("#5D5F25", "#7A292A", "#B5BA4F", "#FF6D33"),
-                                     name = "Type",
-                                     labels = c("Chlorophyll", "DR", "GP", "NP")))
-ggsave("Figures/combo_season.png", plot = mixed_plot, 
-       width = 6.8, height = 5.2, units = "in")
+#ggsave("Figures/season_chl.png", plot = chl_season_plot, 
+#       width = 4.5, height = 4.5, units = "in")
 
 
 ### Climate Data ----
@@ -800,8 +638,8 @@ summary(climate)
                 theme(plot.margin = unit(c(0, 0.5, 0.5, 0.5), "cm")) +
                 scale_x_datetime(date_labels = "%d/%m/%y"))
 
-ggsave("Figures/temp_plot.png", plot = temp2004, 
-       width = 6, height = 4.5, units = "in")
+#ggsave("Figures/temp_plot.png", plot = temp2004, 
+#       width = 6, height = 4.5, units = "in")
 
 
 ### Microclimate Data ----
@@ -1017,7 +855,7 @@ absorbance <- absorbance %>%
 
 
 ### Water Content Curves ----
-water <- read.csv("Data/water_content_full.csv")
+water <- read.csv("Data/Pulse_Experiment/water_content_full.csv")
 str(water)
 water <- water %>% 
   pivot_longer(cols = c(1:2),
@@ -1042,12 +880,11 @@ water <- water %>%
                        name = "Process") +
     scale_shape_discrete(name = "Process"))
 
-ggsave("Figures/water_content.png", plot = water_curves, width = 9, height = 6, units = "in")
 
 ### Main Panel (control vs. treatment, acclimation ratios, light curves) ----
 panel.all <- ggarrange(light_curves,
                        ggarrange(sa_plot, 
-                                 ggarrange(SAratio_plot2, NULL, ncol = 2, widths = c(1, 0.03)),
+                                 ggarrange(SAratio_plot, NULL, ncol = 2, widths = c(1, 0.03)),
                                  nrow = 2, labels = c("b", "c"),
                                  heights = c(1, 0.78),
                                  font.label = list(size = 20, face = "bold")),
@@ -1064,7 +901,7 @@ panel.all.top <- ggarrange(light_curves2,
                            nrow = 2, heights = c(0.9, 1), labels = "a",
                            font.label = list(size = 20, face = "bold")) 
 panel.all.top
-ggsave("Figures/pulse_results_panel3.png", panel.all.top, width = 9, height = 7, units = "in")
+#ggsave("Figures/pulse_results_panel3.png", panel.all.top, width = 9, height = 7, units = "in")
 
 
 ### Season Panel (season, chlorophyll, light curves) ----
@@ -1073,7 +910,7 @@ panel.season <- ggarrange(season_plot, chl_season_plot,
                    ncol = 2, widths = c(1.2, 1), labels = c("a", "b"), 
                    font.label = list(size = 20, face = "bold"))
 panel.season
-ggsave("Figures/season_panel.png", plot = panel.season, width = 9, height = 3.8, units = "in")
+#ggsave("Figures/season_panel.png", plot = panel.season, width = 9, height = 3.8, units = "in")
 
 # panel with temperature 
 panel.season2 <- ggarrange(nrow = 2, heights = c(1, 0.8),
@@ -1098,7 +935,7 @@ panel_otc <- ggarrange(nrow = 2,
                                  widths = c(1, 1), ncol = 2,
                                  font.label = list(size = 20, face = "bold")))
 panel_otc
-ggsave("Figures/otc_panel.png", plot = panel_otc, width = 6.75, height = 6.75, units = "in")
+#ggsave("Figures/otc_panel.png", plot = panel_otc, width = 6.75, height = 6.75, units = "in")
 
 # alternative VP plot
 panel_otc2 <- ggarrange(nrow = 2,
@@ -1111,7 +948,7 @@ panel_otc2 <- ggarrange(nrow = 2,
                                  widths = c(1, 0.8), ncol = 2,
                                  font.label = list(size = 20, face = "bold")))
 panel_otc2
-ggsave("Figures/otc_panel2.png", plot = panel_otc2, width = 6.5, height = 6.5, units = "in")
+#ggsave("Figures/otc_panel2.png", plot = panel_otc2, width = 6.5, height = 6.5, units = "in")
 
 
 # with horizontal vp 
