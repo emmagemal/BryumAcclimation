@@ -442,7 +442,7 @@ par.all <- par.all %>%
                     facet_wrap(~treatment_type, dir = "v") +
                     ylab(label = expression(NP~(µmol~CO2~m^-2~s^-1))) +  
                     xlab(label = expression(paste(
-                      "PPFD ", "(µmol photons ", "m"^-2, " s"^-1, ")"))) +
+                      "PPFD ", "(µmol photons ", "m"^"−2", " s"^"−1", ")"))) +
                     theme_bw() +
                     theme(axis.title.x = 
                             element_text(margin = margin(t = 10, r = 0, b = 0, l = 0)),
