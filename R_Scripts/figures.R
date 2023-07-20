@@ -341,19 +341,23 @@ fit_AQ_curve <- function(df, group_id, Photo, PARi, fit_type = "onls"){
   }
 }
 
+# create Asat, Phi, Rd, theta, resid_SSs, LCP, Q_sat_75 and Q_sat_85 for each sample 
 my.fits <- fit_AQ_curve(df = light,
                         Photo = "NP_SA", PARi = "Lcuv", group_id = "sample", fit_type = "onls")
 
 str(my.fits)
 my.fits <- my.fits %>% 
-              mutate(sample = case_when(ID == "1" ~ "C1",
-                                        ID == "2" ~ "C2",
-                                        ID == "3" ~ "C3",
-                                        ID == "4" ~ "T1",
-                                        ID == "5" ~ "T2",
-                                        ID == "6" ~ "T3"))
+  mutate(sample = case_when(ID == "1" ~ "C1",
+                            ID == "2" ~ "C2",
+                            ID == "3" ~ "C3",
+                            ID == "4" ~ "T1",
+                            ID == "5" ~ "T2",
+                            ID == "6" ~ "T3"))
 
 # doing it manually using output from 'my.fits'
+# equation used is:
+  # (Phi * PAR + Asat - sqrt((Phi * PAR + Asat)^2 - 4 * Phi * theta * Asat * PAR ))/(2*theta) - Rd)
+
 # C1 
 curve.c1 <- function(PARi){
               (0.07287260 * PARi + 8.675147 - 
