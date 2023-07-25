@@ -3,6 +3,8 @@
 ### Authors: Emma L. Gemal*, T. G. Allan Green, Craig S. Cary, Claudia Colesie
 ***Contact for this repository:** emmagemal@outlook.com
 
+The final open access article can be found [here](https://www.mdpi.com/2079-7737/11/12/1773). 
+
 ****
 The data collected and used in this manuscript and in all of its associated statistical analyses and figures can be found [here](https://github.com/emmagemal/BryumAcclimation/tree/main/Data).
 
